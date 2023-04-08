@@ -138,7 +138,14 @@ for target in "${targets[@]}"; do
 	
 	cd "${toolchain_directory}/${triple}/lib"
 	
-	ln --symbolic './libc.so.96.1' './libc.so' || true
+	while read source; do
+		IFS='.' read -ra parts <<< "${source}"
+		
+		declare name="${parts[1]}"
+		declare destination="${name#/}.so"
+		
+		ln --symbolic "${source}" "./${destination}"
+	done <<< "$(find '.' -type 'f' -name 'lib*.so.*')"
 	
 	cd "${gcc_directory}/build"
 	
