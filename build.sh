@@ -1,11 +1,8 @@
 #!/bin/bash
 
-set -e
-set -u
+set -eu
 
 declare -r revision="$(git rev-parse --short HEAD)"
-
-declare -r toolchain_tarball="${PWD}/openbsd-cross.tar.xz"
 
 declare -r gmp_tarball='/tmp/gmp.tar.xz'
 declare -r gmp_directory='/tmp/gmp-6.2.1'
@@ -22,7 +19,10 @@ declare -r binutils_directory='/tmp/binutils-2.40'
 declare -r gcc_tarball='/tmp/gcc.tar.xz'
 declare -r gcc_directory='/tmp/gcc-12.2.0'
 
-declare -r cflags='-Os -s -DNDEBUG'
+declare -r optflags='-Os'
+declare -r linkflags='-Wl,-s'
+
+source "./submodules/obggcc/toolchains/${1}.sh"
 
 if ! [ -f "${gmp_tarball}" ]; then
 	wget --no-verbose 'https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz' --output-document="${gmp_tarball}"
@@ -49,50 +49,61 @@ if ! [ -f "${gcc_tarball}" ]; then
 	tar --directory="$(dirname "${gcc_directory}")" --extract --file="${gcc_tarball}"
 fi
 
-while read file; do
-	sed -i "s/-O2/${cflags}/g" "${file}"
-done <<< "$(find '/tmp' -type 'f' -wholename '*configure')"
-
 [ -d "${gcc_directory}/build" ] || mkdir "${gcc_directory}/build"
 
-declare -r toolchain_directory="/tmp/unknown-unknown-openbsd"
+declare -r toolchain_directory="/tmp/atar"
 
 [ -d "${gmp_directory}/build" ] || mkdir "${gmp_directory}/build"
 
 cd "${gmp_directory}/build"
+rm --force --recursive ./*
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--enable-shared \
-	--enable-static
+	--enable-static \
+	CFLAGS="${optflags}" \
+	CXXFLAGS="${optflags}" \
+	LDFLAGS="${linkflags}"
 
-make all --jobs="$(nproc)"
+make all --jobs="$(($(nproc) * 8))"
 make install
 
 [ -d "${mpfr_directory}/build" ] || mkdir "${mpfr_directory}/build"
 
 cd "${mpfr_directory}/build"
+rm --force --recursive ./*
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
-	--enable-static
+	--enable-static \
+	CFLAGS="${optflags}" \
+	CXXFLAGS="${optflags}" \
+	LDFLAGS="${linkflags}"
 
-make all --jobs="$(nproc)"
+make all --jobs="$(($(nproc) * 8))"
 make install
 
 [ -d "${mpc_directory}/build" ] || mkdir "${mpc_directory}/build"
 
 cd "${mpc_directory}/build"
+rm --force --recursive ./*
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
-	--enable-static
+	--enable-static \
+	CFLAGS="${optflags}" \
+	CXXFLAGS="${optflags}" \
+	LDFLAGS="${linkflags}"
 
-make all --jobs="$(nproc)"
+make all --jobs="$(($(nproc) * 8))"
 make install
 
 sed -i 's/#include <stdint.h>/#include <stdint.h>\n#include <stdio.h>/g' "${toolchain_directory}/include/mpc.h"
@@ -118,19 +129,27 @@ for target in "${targets[@]}"; do
 			declare triple='alpha-unknown-openbsd';;
 	esac
 	
-	wget --no-verbose "https://cdn.openbsd.org/pub/OpenBSD/7.0/${target}/base70.tgz" --output-document='/tmp/base.tgz'
-	wget --no-verbose "https://cdn.openbsd.org/pub/OpenBSD/7.0/${target}/comp70.tgz" --output-document='/tmp/comp.tgz'
+	wget --no-verbose "https://ftp.openbsd.org/pub/OpenBSD/7.0/${target}/base70.tgz" --output-document='/tmp/base.tgz'
+	wget --no-verbose "https://ftp.openbsd.org/pub/OpenBSD/7.0/${target}/comp70.tgz" --output-document='/tmp/comp.tgz'
 	
 	cd "${binutils_directory}/build"
 	rm --force --recursive ./*
 	
 	../configure \
+		--host="${CROSS_COMPILE_TRIPLET}" \
 		--target="${triple}" \
 		--prefix="${toolchain_directory}" \
 		--enable-gold \
-		--enable-ld
+		--enable-ld \
+		--enable-lto \
+		--disable-gprofng \
+		--with-static-standard-libraries \
+		--program-prefix="${triple}-" \
+		CFLAGS="${optflags}" \
+		CXXFLAGS="${optflags}" \
+		LDFLAGS="${linkflags}"
 	
-	make all --jobs="$(nproc)"
+	make all --jobs="$(($(nproc) * 8))"
 	make install
 	
 	tar --directory="${toolchain_directory}/${triple}" --strip=2 --extract --file='/tmp/base.tgz' './usr/lib' './usr/include'
@@ -158,14 +177,14 @@ for target in "${targets[@]}"; do
 	fi
 	
 	../configure \
+		--host="${CROSS_COMPILE_TRIPLET}" \
 		--target="${triple}" \
 		--prefix="${toolchain_directory}" \
 		--with-linker-hash-style='gnu' \
 		--with-gmp="${toolchain_directory}" \
 		--with-mpc="${toolchain_directory}" \
 		--with-mpfr="${toolchain_directory}" \
-		--with-system-zlib \
-		--with-bugurl='https://github.com/AmanoTeam/0p3nbsdcr0ss/issues' \
+		--with-bugurl='https://github.com/AmanoTeam/Atar/issues' \
 		--enable-__cxa_atexit \
 		--enable-cet='auto' \
 		--enable-checking='release' \
@@ -189,17 +208,37 @@ for target in "${targets[@]}"; do
 		--without-headers \
 		--enable-ld \
 		--enable-gold \
-		--with-pic \
 		--with-gcc-major-version-only \
-		--with-pkgversion="0p3nbsdcr0ss v0.1-${revision}" \
+		--with-pkgversion="Atar v0.2-${revision}" \
 		--with-sysroot="${toolchain_directory}/${triple}" \
 		--with-native-system-header-dir='/include' \
-		${extra_configure_flags}
+		--disable-nls \
+		${extra_configure_flags} \
+		CFLAGS="${optflags}" \
+		CXXFLAGS="${optflags}" \
+		LDFLAGS="-Wl,-rpath-link,${OBGGCC_TOOLCHAIN}/${CROSS_COMPILE_TRIPLET}/lib ${linkflags}"
 	
-	LD_LIBRARY_PATH="${toolchain_directory}/lib" PATH="${PATH}:${toolchain_directory}/bin" make CFLAGS_FOR_TARGET="${cflags}" CXXFLAGS_FOR_TARGET="${cflags}" all --jobs=8 #"$(nproc)"
+	LD_LIBRARY_PATH="${toolchain_directory}/lib" PATH="${PATH}:${toolchain_directory}/bin" make \
+		CFLAGS_FOR_TARGET="${optflags} ${linkflags}" \
+		CXXFLAGS_FOR_TARGET="${optflags} ${linkflags}" \
+		all --jobs="$(($(nproc) * 8))"
 	make install
 	
+	cd "${toolchain_directory}/${triple}/bin"
+	
+	for name in *; do
+		rm "${name}"
+		ln -s "../../bin/${triple}-${name}" "${name}"
+	done
+	
+	rm --recursive "${toolchain_directory}/share"
 	rm --recursive "${toolchain_directory}/lib/gcc/${triple}/12/include-fixed"
+	
+	if [ "${CROSS_COMPILE_TRIPLET}" == "${triple}" ]; then
+		rm "${toolchain_directory}/bin/${triple}-${triple}"*
+	fi
+	
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/cc1"
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/cc1plus"
+	patchelf --add-rpath '$ORIGIN/../../../../lib' "${toolchain_directory}/libexec/gcc/${triple}/12/lto1"
 done
-
-tar --directory="$(dirname "${toolchain_directory}")" --create --file=- "$(basename "${toolchain_directory}")" |  xz --threads=0 --compress -9 > "${toolchain_tarball}"
