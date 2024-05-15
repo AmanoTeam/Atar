@@ -1,0 +1,31 @@
+From 263932cc8c2612e64df3d2cda1f235b96f6f3af0 Mon Sep 17 00:00:00 2001
+From: Kartatz <105828205+Kartatz@users.noreply.github.com>
+Date: Sun, 19 May 2024 07:12:30 +0200
+Subject: [PATCH] Disable warning regarding exec-stack
+
+Since I don't know how to solve this issue, let's pretend it does not exist
+---
+ bfd/elflink.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/bfd/elflink.c b/bfd/elflink.c
+index c2494b3..c569a5e 100644
+--- a/bfd/elflink.c
++++ b/bfd/elflink.c
+@@ -7266,11 +7266,13 @@ error: %s: is triggering the generation of an executable stack because it does n
+ 			  return false;
+ 			}
+ 
++		      /*
+ 		      _bfd_error_handler (_("\
+ warning: %s: missing .note.GNU-stack section implies executable stack"),
+ 					  bfd_get_filename (emptyobj));
+ 		      _bfd_error_handler (_("\
+ NOTE: This behaviour is deprecated and will be removed in a future version of the linker"));
++		      */
+ 		    }
+ 		}
+ 	    }
+-- 
+2.36.6
+

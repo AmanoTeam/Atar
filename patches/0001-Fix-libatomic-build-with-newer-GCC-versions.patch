@@ -1,0 +1,24 @@
+From 294e57ba5a44bd5c9553033aa61b5f00613b25d9 Mon Sep 17 00:00:00 2001
+From: Kartatz <105828205+Kartatz@users.noreply.github.com>
+Date: Fri, 17 May 2024 16:57:52 +0200
+Subject: [PATCH] Fix libatomic build with newer GCC versions
+
+This is required due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87231
+---
+ gcc/config/t-openbsd | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gcc/config/t-openbsd b/gcc/config/t-openbsd
+index 3b625d6..3123d34 100644
+--- a/gcc/config/t-openbsd
++++ b/gcc/config/t-openbsd
+@@ -1,5 +1,5 @@
+ # We don't need GCC's own include files.
+-USER_H = $(EXTRA_HEADERS)
++# USER_H = $(EXTRA_HEADERS)
+ 
+ # OpenBSD-specific D support.
+ openbsd-d.o: $(srcdir)/config/openbsd-d.cc
+-- 
+2.36.6
+
