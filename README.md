@@ -10,6 +10,14 @@ We currently build cross-compilers targeting many OpenBSD architectures. See abo
 * `hppa-unknown-openbsd`
 * `i386-unknown-openbsd`
 * `x86_64-unknown-openbsd`
+* `arm-unknown-openbsd`
+* `aarch64-unknown-openbsd`
+* `powerpc-unknown-openbsd`
+* `powerpc64-unknown-openbsd`
+* `sparc64-unknown-openbsd`
+* `mips64-unknown-openbsd`
+* `mips64el-unknown-openbsd`
+* `riscv64-unknown-openbsd`
 
 ## Releases
 
