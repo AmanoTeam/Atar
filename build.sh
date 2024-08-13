@@ -16,7 +16,7 @@ declare -r mpc_tarball='/tmp/mpc.tar.gz'
 declare -r mpc_directory='/tmp/mpc-1.3.1'
 
 declare -r binutils_tarball='/tmp/binutils.tar.xz'
-declare -r binutils_directory='/tmp/binutils-2.42'
+declare -r binutils_directory='/tmp/binutils-2.43'
 
 declare -r lld_tarball='/tmp/lld.tar.xz'
 
@@ -35,8 +35,8 @@ function setup_gcc_source() {
 	
 	if [ "${tgt}" = 'hppa' ] || [ "${tgt}" = 'alpha' ] || [ "${tgt}" = 'amd64' ] || [ "${tgt}" = 'i386' ]; then
 		gcc_version='14'
-		gcc_directory='/tmp/gcc-14.1.0'
-		gcc_url='https://ftp.gnu.org/gnu/gcc/gcc-14.1.0/gcc-14.1.0.tar.xz'
+		gcc_directory='/tmp/gcc-14.2.0'
+		gcc_url='https://ftp.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.xz'
 	else
 		gcc_version='11'
 		gcc_directory='/tmp/gcc-11.2.0'
@@ -117,7 +117,7 @@ if ! [ -f "${mpc_tarball}" ]; then
 fi
 
 if ! [ -f "${binutils_tarball}" ]; then
-	wget --no-verbose 'https://ftp.gnu.org/gnu/binutils/binutils-2.42.tar.xz' --output-document="${binutils_tarball}"
+	wget --no-verbose 'https://ftp.gnu.org/gnu/binutils/binutils-2.43.tar.xz' --output-document="${binutils_tarball}"
 	tar --directory="$(dirname "${binutils_directory}")" --extract --file="${binutils_tarball}"
 	
 	patch --directory="${binutils_directory}" --strip='1' --input="${workdir}/patches/0001-Revert-gold-Use-char16_t-char32_t-instead-of-uint16_.patch"
@@ -189,8 +189,6 @@ rm --force --recursive ./*
 
 make all --silent --jobs
 make install
-
-sed -i 's/#include <stdint.h>/#include <stdint.h>\n#include <stdio.h>/g' "${toolchain_directory}/include/mpc.h"
 
 [ -d "${binutils_directory}/build" ] || mkdir "${binutils_directory}/build"
 
@@ -336,7 +334,7 @@ for target in "${targets[@]}"; do
 		--with-mpfr="${toolchain_directory}" \
 		--with-bugurl='https://github.com/AmanoTeam/Atar/issues' \
 		--with-gcc-major-version-only \
-		--with-pkgversion="Atar v0.4-${revision}" \
+		--with-pkgversion="Atar v0.5-${revision}" \
 		--with-sysroot="${toolchain_directory}/${triplet}" \
 		--with-native-system-header-dir='/include' \
 		--enable-__cxa_atexit \
