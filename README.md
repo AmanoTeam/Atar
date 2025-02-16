@@ -1,10 +1,16 @@
 # Atar
 
-A GCC cross-compiler targeting OpenBSD 7.0.
+A GCC cross-compiler targeting OpenBSD 7.7.
+
+## Differences from the `lang/gcc/11` port
+
+This version uses the patchset from OpenBSD ports (which is currently based on [GCC 11.2](https://github.com/openbsd/ports/tree/master/lang/gcc/11/patches)), plus some extra patches, and is also rebased on top of the latest GCC 15.
+
+I also removed BSD-specific code from the host tools to allow it to be compiled on Linux and other non-BSD platforms.
 
 ## Target architectures
 
-We currently build cross-compilers targeting many OpenBSD architectures. See above for more info:
+All architectures that the `lang/gcc/11` port supports are also supported here, but note that I mostly only tested the `x86_64` architecture.
 
 * `alpha-unknown-openbsd`
 * `hppa-unknown-openbsd`
@@ -21,4 +27,4 @@ We currently build cross-compilers targeting many OpenBSD architectures. See abo
 
 ## Releases
 
-You can obtain releases from the  [releases](https://github.com/AmanoTeam/Atar/releases) page.
+You can obtain releases from the [releases](https://github.com/AmanoTeam/Atar/releases) page.

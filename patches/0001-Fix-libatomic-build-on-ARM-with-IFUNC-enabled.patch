@@ -1,0 +1,43 @@
+From 6e011dcb69b9f26b97b5d1d9276cbb1eb5f34d49 Mon Sep 17 00:00:00 2001
+From: Kartatz <105828205+Kartatz@users.noreply.github.com>
+Date: Tue, 1 Jul 2025 20:26:05 -0300
+Subject: [PATCH] Fix libatomic build on ARM with IFUNC enabled
+
+---
+ libatomic/libatomic_i.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/libatomic/libatomic_i.h b/libatomic/libatomic_i.h
+index e59dd412e..0c13585e0 100644
+--- a/libatomic/libatomic_i.h
++++ b/libatomic/libatomic_i.h
+@@ -194,7 +194,7 @@ void libat_unlock_n (void *ptr, size_t n);
+ # define MAN(X)			ASMNAME(C2(__atomic_,X))
+ #endif
+ 
+-#if !defined(N) && HAVE_IFUNC
++#if !defined(N) && (HAVE_IFUNC && !defined(__arm__))
+ # define DECLARE_1(RET,NAME,ARGS) \
+ 	RET C2(libat_,NAME) ARGS MAN(NAME); \
+ 	RET C2(ifunc_,NAME) ARGS ASMNAME(C2(__atomic_,NAME))
+@@ -203,7 +203,7 @@ void libat_unlock_n (void *ptr, size_t n);
+ #endif
+ 
+ /* Prefix to use when calling internal, possibly ifunc'ed functions.  */
+-#if HAVE_IFUNC
++#if (HAVE_IFUNC && !defined(__arm__))
+ # define local_ ifunc_
+ #else
+ # define local_ libat_
+@@ -232,7 +232,7 @@ bool libat_is_lock_free (size_t, void *) MAN(is_lock_free);
+ #include <host-config.h>
+ 
+ /* We don't have IFUNC_NCOND until after host-config.h.  */
+-#if !HAVE_IFUNC
++#if !(HAVE_IFUNC && !(defined(__OpenBSD__) && defined(__arm__)))
+ # define IFUNC_NCOND(N) 0
+ #endif
+ 
+-- 
+2.49.0
+

@@ -1,0 +1,3213 @@
+From 1548b58259a41aab2725996522522b1754edc8b3 Mon Sep 17 00:00:00 2001
+From: Kartatz <105828205+Kartatz@users.noreply.github.com>
+Date: Tue, 1 Jul 2025 21:03:09 -0300
+Subject: [PATCH] GCC 15
+
+Patches from OpenBSD Ports GCC 11 (https://github.com/openbsd/ports/tree/master/lang/gcc/11) rebased on top of GCC 15.
+---
+ fixincludes/fixincl.x                         |   4 +-
+ fixincludes/inclhack.def                      |   4 +-
+ gcc/c-family/c-format.cc                      |  61 +++
+ gcc/common.opt                                |  23 +-
+ gcc/common/config/aarch64/aarch64-common.cc   |   2 -
+ gcc/common/config/arm/arm-common.cc           |   1 -
+ gcc/common/config/rs6000/rs6000-common.cc     |   4 -
+ gcc/config.gcc                                |  75 +++-
+ gcc/config/aarch64/openbsd.h                  | 116 +++++
+ gcc/config/alpha/alpha.cc                     |  60 ++-
+ gcc/config/alpha/alpha.h                      |   2 +-
+ gcc/config/alpha/alpha.md                     |   3 +-
+ gcc/config/alpha/alpha.opt                    |   4 +
+ gcc/config/alpha/openbsd.h                    |  22 +
+ gcc/config/arm/arm.h                          |   2 +-
+ gcc/config/arm/openbsd.h                      | 250 +++++++++++
+ gcc/config/arm/openbsd1.h                     |  26 ++
+ gcc/config/exec-stack.h                       |  40 ++
+ gcc/config/i386/i386.cc                       |   4 +
+ gcc/config/i386/i386.h                        |   2 +
+ gcc/config/i386/openbsdelf.h                  |  12 +-
+ gcc/config/mips/mips.h                        |   5 +-
+ gcc/config/mips/openbsd.h                     | 227 ++++++++++
+ gcc/config/openbsd-libpthread.h               |   2 +-
+ gcc/config/openbsd.h                          |   9 +-
+ gcc/config/openbsd.opt                        |   3 +
+ gcc/config/pa/pa-openbsd.h                    |   9 +-
+ gcc/config/pa/pa.cc                           |   4 +
+ gcc/config/pa/pa.h                            |   3 +
+ gcc/config/riscv/openbsd.h                    | 121 ++++++
+ gcc/config/riscv/riscv.opt                    |   2 +-
+ gcc/config/rs6000/driver-rs6000.cc            |   3 +
+ gcc/config/rs6000/openbsd.h                   | 132 ++++++
+ gcc/config/rs6000/openbsd1.h                  |  24 +
+ gcc/config/rs6000/openbsd64.h                 | 411 ++++++++++++++++++
+ gcc/config/rs6000/sysv4.h                     |  15 +-
+ gcc/config/rs6000/t-openbsd                   |  48 ++
+ gcc/config/sparc/openbsd64.h                  |  31 +-
+ gcc/config/sparc/sparc.cc                     |   6 +-
+ gcc/config/t-openbsd                          |   6 +-
+ gcc/configure                                 |   8 +-
+ gcc/defaults.h                                |   4 +
+ gcc/flags.h                                   |   3 +
+ gcc/gcc.cc                                    |   2 +-
+ gcc/ginclude/stddef.h                         |   1 +
+ gcc/lto/lto-common.cc                         |   6 +
+ gcc/opts.cc                                   |  12 +-
+ gcc/targhooks.cc                              | 112 ++---
+ gcc/tree-vect-loop.cc                         |   2 +
+ libatomic/configure.tgt                       |   2 +-
+ libbacktrace/configure                        |   4 +-
+ libffi/include/Makefile.in                    |   2 +-
+ libffi/src/closures.c                         |   2 +
+ libgcc/config.host                            |  29 +-
+ libgcc/config/arm/unwind-arm.h                |   2 +-
+ libgcc/config/rs6000/t-openbsd                |  12 +
+ libgcc/libgcc2.c                              |   1 +
+ libgcc/unwind-dw2.c                           |  27 ++
+ .../config/os/bsd/openbsd/ctype_base.h        |  19 +-
+ 59 files changed, 1906 insertions(+), 122 deletions(-)
+ create mode 100644 gcc/config/aarch64/openbsd.h
+ create mode 100644 gcc/config/arm/openbsd.h
+ create mode 100644 gcc/config/arm/openbsd1.h
+ create mode 100644 gcc/config/exec-stack.h
+ create mode 100644 gcc/config/mips/openbsd.h
+ create mode 100644 gcc/config/riscv/openbsd.h
+ create mode 100644 gcc/config/rs6000/openbsd.h
+ create mode 100644 gcc/config/rs6000/openbsd1.h
+ create mode 100644 gcc/config/rs6000/openbsd64.h
+ create mode 100644 gcc/config/rs6000/t-openbsd
+ create mode 100644 libgcc/config/rs6000/t-openbsd
+
+diff --git a/fixincludes/fixincl.x b/fixincludes/fixincl.x
+index 9dc05ea17..b70803d6c 100644
+--- a/fixincludes/fixincl.x
++++ b/fixincludes/fixincl.x
+@@ -7885,11 +7885,11 @@ static const char* apzSolaris_Complex_CxxPatch[] = { sed_cmd_z,
+     "-e", "/#if[ \t]*!defined(__cplusplus)/c\\\n\
+ #ifdef\t__cplusplus\\\n\
+ extern \"C\" {\\\n\
+-#endif",
++#endif\\\n",
+     "-e", "/#endif[ \t]*\\/\\* !defined(__cplusplus) \\*\\//c\\\n\
+ #ifdef\t__cplusplus\\\n\
+ }\\\n\
+-#endif",
++#endif\\\n",
+     (char*)NULL };
+ 
+ /* * * * * * * * * * * * * * * * * * * * * * * * * *
+diff --git a/fixincludes/inclhack.def b/fixincludes/inclhack.def
+index 1ac8e3354..39b25f7e3 100644
+--- a/fixincludes/inclhack.def
++++ b/fixincludes/inclhack.def
+@@ -3941,9 +3941,9 @@ fix = {
+     mach      = "*-*-solaris2.*";
+     files     = complex.h;
+     sed	      = "/#if[ \t]*!defined(__cplusplus)/c\\\n"
+-    		"#ifdef\t__cplusplus\\\nextern \"C\" {\\\n#endif";
++    		"#ifdef\t__cplusplus\\\nextern \"C\" {\\\n#endif\\\n";
+     sed	      = "/#endif[ \t]*\\/\\* !defined(__cplusplus) \\*\\//c\\\n"
+-		"#ifdef\t__cplusplus\\\n}\\\n#endif";
++		"#ifdef\t__cplusplus\\\n}\\\n#endif\\\n";
+     test_text = "#if !defined(__cplusplus)\n"
+ 		"#endif	/* !defined(__cplusplus) */";
+ };
+diff --git a/gcc/c-family/c-format.cc b/gcc/c-family/c-format.cc
+index 211d20dd2..c18ebffcb 100644
+--- a/gcc/c-family/c-format.cc
++++ b/gcc/c-family/c-format.cc
+@@ -44,6 +44,7 @@ along with GCC; see the file COPYING3.  If not see
+    format_type_error.  Target-specific format types do not have
+    matching enum values.  */
+ enum format_type { printf_format_type, asm_fprintf_format_type,
++		   kprintf_format_type, syslog_format_type,
+ 		   gcc_diag_format_type, gcc_tdiag_format_type,
+ 		   gcc_cdiag_format_type,
+ 		   gcc_cxxdiag_format_type, gcc_gfc_format_type,
+@@ -519,6 +520,16 @@ static const format_length_info gcc_diag_length_specs[] =
+   { NO_FMT, NO_FMT, 0 }
+ };
+ 
++static const format_length_info kprintf_length_specs[] =
++{
++  { "h", FMT_LEN_h, STD_C89, NO_FMT, 0 },
++  { "l", FMT_LEN_l, STD_C89, "ll", FMT_LEN_ll, STD_C9L, 0 },
++  { "q", FMT_LEN_ll, STD_EXT, NO_FMT, 0 },
++  { "z", FMT_LEN_z, STD_C99, NO_FMT, 0 },
++  { "t", FMT_LEN_t, STD_C99, NO_FMT, 0 },
++  { NO_FMT, NO_FMT, 0 }
++};
++
+ /* The custom diagnostics all accept the same length specifiers.  */
+ #define gcc_tdiag_length_specs gcc_diag_length_specs
+ #define gcc_cdiag_length_specs gcc_diag_length_specs
+@@ -780,6 +791,44 @@ static const format_char_info asm_fprintf_char_table[] =
+   { "m",   0, STD_C89, NOARGUMENTS, "q",     "",   NULL }, \
+   { "Z",   1, STD_C89, { T89_I,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "",    "", &gcc_diag_char_table[0] }
+ 
++static const format_char_info kprint_char_table[] =
++{
++  /* C89 conversion specifiers.  */
++  { "di",  0, STD_C89, { T89_I,   BADLEN,  T89_S,   T89_L,   T9L_LL,  BADLEN,  T99_SST, T99_PD,  BADLEN, BADLEN,  BADLEN,  BADLEN  }, "-wp0 +'I", "i", NULL },
++  { "oxX", 0, STD_C89, { T89_UI,  BADLEN,  T89_US,  T89_UL,  T9L_ULL, BADLEN, T99_ST,  T99_UPD,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "-wp0#",    "i", NULL },
++  { "u",   0, STD_C89, { T89_UI,  BADLEN,  T89_US,  T89_UL,  T9L_ULL, BADLEN, T99_ST,  T99_UPD,  BADLEN,  BADLEN,  BADLEN,  BADLEN }, "-wp0'I",   "i", NULL },
++  { "c",   0, STD_C89, { T89_I,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN, BADLEN,  BADLEN,  BADLEN  }, "-w",       "", NULL },
++  { "s",   1, STD_C89, { T89_C,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN, BADLEN, BADLEN,  BADLEN,   BADLEN,  BADLEN  }, "-wp",      "cR", NULL },
++  { "p",   1, STD_C89, { T89_V,   BADLEN,  BADLEN,  T89_UL,  T9L_LL,  BADLEN,  BADLEN, BADLEN, BADLEN,  BADLEN,   BADLEN,  BADLEN  }, "-wp0",      "c", NULL },
++/* Kernel bitmap formatting */
++  { "b",   0, STD_C89, { T89_I,   BADLEN,  T89_S,  T89_L,  T9L_LL,  BADLEN,  T99_SST,  BADLEN,  BADLEN, BADLEN,   BADLEN,  BADLEN }, "",    "", kprint_char_table + 8   },
++  { NULL,  0, STD_C89, NOLENGTHS, NULL, NULL, NULL },
++/* Kernel bitmap formatting, second part - similar to "s" except for types[] */
++  { "b",   1, STD_C89, { T89_C,   BADLEN,  T89_C,  T89_C,  T89_C,  BADLEN,  T89_C,  BADLEN,  BADLEN, BADLEN, BADLEN, BADLEN }, NULL,		"cR", NULL   }
++};
++
++static const format_char_info syslog_char_table[] =
++{
++  /* C89 conversion specifiers.  */
++  { "di",  0, STD_C89, { T89_I,   T99_SC,  T89_S,   T89_L,   T9L_LL,  TEX_LL,  T99_SST, T99_PD,  T99_IM  }, "-wp0 +'I", "i", NULL  },
++  { "oxX", 0, STD_C89, { T89_UI,  T99_UC,  T89_US,  T89_UL,  T9L_ULL, TEX_ULL, T99_ST,  T99_UPD, T99_UIM }, "-wp0#",    "i", NULL  },
++  { "u",   0, STD_C89, { T89_UI,  T99_UC,  T89_US,  T89_UL,  T9L_ULL, TEX_ULL, T99_ST,  T99_UPD, T99_UIM }, "-wp0'I",   "i", NULL  },
++  { "fgG", 0, STD_C89, { T89_D,   BADLEN,  BADLEN,  T99_D,   BADLEN,  T89_LD,  BADLEN,  BADLEN,  BADLEN  }, "-wp0 +#'", "", NULL   },
++  { "eE",  0, STD_C89, { T89_D,   BADLEN,  BADLEN,  T99_D,   BADLEN,  T89_LD,  BADLEN,  BADLEN,  BADLEN  }, "-wp0 +#",  "", NULL   },
++  { "c",   0, STD_C89, { T89_I,   BADLEN,  BADLEN,  T94_WI,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-w",       "", NULL   },
++  { "s",   1, STD_C89, { T89_C,   BADLEN,  BADLEN,  T94_W,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp",      "cR", NULL },
++  { "p",   1, STD_C89, { T89_V,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-w",       "c", NULL  },
++  { "n",   1, STD_C89, { T89_I,   T99_SC,  T89_S,   T89_L,   T9L_LL,  BADLEN,  T99_SST, T99_PD,  T99_IM  }, "",         "W", NULL  },
++  /* C99 conversion specifiers.  */
++  { "F",   0, STD_C99, { T99_D,   BADLEN,  BADLEN,  T99_D,   BADLEN,  T99_LD,  BADLEN,  BADLEN,  BADLEN  }, "-wp0 +#'", "", NULL   },
++  { "aA",  0, STD_C99, { T99_D,   BADLEN,  BADLEN,  T99_D,   BADLEN,  T99_LD,  BADLEN,  BADLEN,  BADLEN  }, "-wp0 +#",  "", NULL   },
++  /* X/Open conversion specifiers.  */
++  { "C",   0, STD_EXT, { TEX_WI,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-w",       "", NULL   },
++  { "S",   1, STD_EXT, { TEX_W,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp",      "R", NULL  },
++  { "m",   0, STD_C89, { T89_V,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "-wp",      "", NULL   },
++  { NULL,  0, STD_C89, NOLENGTHS, NULL, NULL, NULL }
++};
++
+ static const format_char_info gcc_diag_char_table[] =
+ {
+   /* The conversion specifiers implemented within pp_format.  */
+@@ -953,6 +1002,18 @@ static const format_kind_info format_types_orig[] =
+     'w', 0, 'p', 0, 'L', 0,
+     NULL, NULL
+   },
++  { "kprintf", kprintf_length_specs, kprint_char_table, " +#0-'I", NULL,
++    printf_flag_specs, printf_flag_pairs,
++    FMT_FLAG_ARG_CONVERT|FMT_FLAG_EMPTY_PREC_OK,
++    'w', 0, 'p', 0, 'L', 0,
++    &integer_type_node, &integer_type_node
++  },
++  { "syslog", printf_length_specs, syslog_char_table, " +#0-'I", NULL,
++    printf_flag_specs, printf_flag_pairs,
++    FMT_FLAG_ARG_CONVERT|FMT_FLAG_DOLLAR_MULTIPLE|FMT_FLAG_USE_DOLLAR|FMT_FLAG_EMPTY_PREC_OK,
++    'w', 0, 'p', 0, 'L', 0,
++    &integer_type_node, &integer_type_node
++  },
+   { "gcc_diag",   gcc_diag_length_specs,  gcc_diag_char_table, "q+#", NULL,
+     gcc_diag_flag_specs, gcc_diag_flag_pairs,
+     FMT_FLAG_ARG_CONVERT,
+diff --git a/gcc/common.opt b/gcc/common.opt
+index e3fa0dace..5e7bded39 100644
+--- a/gcc/common.opt
++++ b/gcc/common.opt
+@@ -686,6 +686,10 @@ Wnull-dereference
+ Common Var(warn_null_dereference) Warning
+ Warn if dereferencing a NULL pointer may lead to erroneous or undefined behavior.
+ 
++Wstack-larger-than-
++Common RejectNegative Joined UInteger
++-Wstack-larger-than-<number> Warn if a function is using more than <number> bytes of stack space for its local variables.
++
+ Wunsafe-loop-optimizations
+ Common Ignore Warning
+ Does nothing. Preserved for backward compatibility.
+@@ -817,7 +821,7 @@ Warn about statements between switch's controlling expression and the first
+ case.
+ 
+ Wsystem-headers
+-Common Var(warn_system_headers) Warning
++Common Var(warn_system_headers) Init(1) Warning
+ Do not suppress warnings from system headers.
+ 
+ Wtautological-compare
+@@ -880,6 +884,10 @@ Wunused-variable
+ Common Var(warn_unused_variable) Warning EnabledBy(Wunused)
+ Warn when a variable is unused.
+ 
++Wvariable-decl
++Common Var(warn_variable_decl)
++Warn about variable-sized declarations
++
+ Wcoverage-mismatch
+ Common Var(warn_coverage_mismatch) Init(1) Warning
+ Warn in case profiles in -fprofile-use do not match.
+@@ -1068,7 +1076,7 @@ Common Joined RejectNegative UInteger Var(flag_abi_version) Init(0)
+ The version of the C++ ABI in use.
+ 
+ faggressive-loop-optimizations
+-Common Var(flag_aggressive_loop_optimizations) Optimization Init(1)
++Common Var(flag_aggressive_loop_optimizations) Optimization
+ Aggressively optimize loops using language constraints.
+ 
+ falign-functions
+@@ -1359,7 +1367,7 @@ Common Var(flag_delete_dead_exceptions) Init(0) Optimization
+ Delete dead instructions that may throw exceptions.
+ 
+ fdelete-null-pointer-checks
+-Common Var(flag_delete_null_pointer_checks) Init(-1) Optimization
++Common Var(flag_delete_null_pointer_checks) Init(0) Optimization
+ Delete useless null pointer checks.
+ 
+ fdevirtualize-at-ltrans
+@@ -1943,7 +1951,7 @@ Enum(hardcfr_check_noreturn_calls) String(always) Value(HCFRNR_ALWAYS)
+ ; On SVR4 targets, it also controls whether or not to emit a
+ ; string identifying the compiler.
+ fident
+-Common Var(flag_no_ident,0)
++Common Var(flag_no_ident,0) Init(1)
+ Process #ident directives.
+ 
+ fif-conversion
+@@ -2058,7 +2066,7 @@ Common RejectNegative Alias(fcf-protection=,full)
+ Equivalent to -fcf-protection=full.
+ 
+ fcf-protection=
+-Common Joined RejectNegative Enum(cf_protection_level) EnumSet Var(flag_cf_protection) Init(CF_NONE)
++Common Joined RejectNegative Enum(cf_protection_level) EnumSet Var(flag_cf_protection) Init(CF_DEFAULT)
+ -fcf-protection=[full|branch|return|none|check]	Instrument functions with checks to verify jump/call/return control-flow transfer
+ instructions have valid targets.
+ 
+@@ -2998,7 +3006,7 @@ Common RejectNegative Joined Var(common_deferred_options) Defer
+ -fstack-limit-symbol=<name>	Trap if the stack goes past symbol <name>.
+ 
+ fstack-protector
+-Common Var(flag_stack_protect, 1) Init(-1) Optimization
++Common Var(flag_stack_protect, 3) Init(-1) Optimization
+ Use propolice as a stack protection method.
+ 
+ fstack-protector-all
+@@ -3782,6 +3790,9 @@ Driver
+ nodefaultlibs
+ Driver
+ 
++nopie
++Driver
++
+ nostartfiles
+ Driver
+ 
+diff --git a/gcc/common/config/aarch64/aarch64-common.cc b/gcc/common/config/aarch64/aarch64-common.cc
+index b9ed83642..6afd9e66f 100644
+--- a/gcc/common/config/aarch64/aarch64-common.cc
++++ b/gcc/common/config/aarch64/aarch64-common.cc
+@@ -47,8 +47,6 @@
+ /* Set default optimization options.  */
+ static const struct default_options aarch_option_optimization_table[] =
+   {
+-    /* Enable section anchors by default at -O1 or higher.  */
+-    { OPT_LEVELS_1_PLUS, OPT_fsection_anchors, NULL, 1 },
+     /* Disable fomit-frame-pointer by default.  */
+     { OPT_LEVELS_ALL, OPT_fomit_frame_pointer, NULL, 0 },
+     /* Enable -fsched-pressure by default when optimizing.  */
+diff --git a/gcc/common/config/arm/arm-common.cc b/gcc/common/config/arm/arm-common.cc
+index 6b38e34df..f96e69888 100644
+--- a/gcc/common/config/arm/arm-common.cc
++++ b/gcc/common/config/arm/arm-common.cc
+@@ -39,7 +39,6 @@
+ static const struct default_options arm_option_optimization_table[] =
+   {
+     /* Enable section anchors by default at -O1 or higher.  */
+-    { OPT_LEVELS_1_PLUS, OPT_fsection_anchors, NULL, 1 },
+     { OPT_LEVELS_1_PLUS, OPT_fsched_pressure, NULL, 1 },
+     { OPT_LEVELS_NONE, 0, NULL, 0 }
+   };
+diff --git a/gcc/common/config/rs6000/rs6000-common.cc b/gcc/common/config/rs6000/rs6000-common.cc
+index 64794ba18..7b2e4fcdf 100644
+--- a/gcc/common/config/rs6000/rs6000-common.cc
++++ b/gcc/common/config/rs6000/rs6000-common.cc
+@@ -60,10 +60,6 @@ rs6000_option_init_struct (struct gcc_options *opts)
+        avoid calling them when that's the only reason we would.  */
+     opts->x_flag_errno_math = 0;
+ 
+-  /* Enable section anchors by default.  */
+-  if (!TARGET_MACHO)
+-    opts->x_flag_section_anchors = 1;
+-
+   /* By default, always emit DWARF-2 unwind info.  This allows debugging
+      without maintaining a stack frame back-chain.  It also allows the
+      debugger to find out where on-entry register values are stored at any
+diff --git a/gcc/config.gcc b/gcc/config.gcc
+index 5725704e0..ada602fc6 100644
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -970,6 +970,14 @@ case ${target} in
+       target_has_targetdm=yes
+       ;;
+   esac
++  case ${target} in
++    *-*-openbsd[0-3].*|*-*-openbsd4.[012])
++      # keep default of no cxa_atexit support for these older releases
++      ;;
++    *)
++      default_use_cxa_atexit=yes
++      ;;
++  esac
+   ;;
+ *-*-netbsd*)
+   tm_p_file="${tm_p_file} netbsd-protos.h"
+@@ -1236,6 +1244,13 @@ aarch64*-*-netbsd*)
+ 	tmake_file="${tmake_file} aarch64/t-aarch64 aarch64/t-aarch64-netbsd"
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+ 	;;
++aarch64-*-openbsd*)
++	tm_file="${tm_file} elfos.h"
++	tm_file="${tm_file} aarch64/aarch64-elf.h openbsd-stdint.h"
++	tm_file="${tm_file} openbsd.h aarch64/openbsd.h openbsd-libpthread.h"
++	tmake_file="${tmake_file} aarch64/t-aarch64"
++	extra_options="${extra_options} openbsd.opt"
++	;;
+ aarch64*-*-linux*)
+ 	tm_file="${tm_file} elfos.h gnu-user.h linux.h glibc-stdint.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-errata.h aarch64/aarch64-linux.h"
+@@ -1317,7 +1332,7 @@ alpha*-*-netbsd*)
+ 		       alpha/elf.opt"
+ 	;;
+ alpha*-*-openbsd*)
+-	tm_defines="${tm_defines} OBSD_HAS_DECLARE_FUNCTION_NAME OBSD_HAS_DECLARE_FUNCTION_SIZE OBSD_HAS_DECLARE_OBJECT"
++	tm_defines="${tm_defines} OBSD_HAS_DECLARE_FUNCTION_NAME OBSD_HAS_DECLARE_FUNCTION_SIZE OBSD_HAS_DECLARE_OBJECT DEFAULT_FLAG_PIE=2"
+ 	tm_file="elfos.h alpha/alpha.h alpha/elf.h openbsd.h openbsd-stdint.h alpha/openbsd.h openbsd-libpthread.h"
+ 	tmake_file="${tmake_file} alpha/t-alpha"
+ 	extra_options="${extra_options} openbsd.opt alpha/elf.opt"
+@@ -1441,6 +1456,14 @@ arm*-*-netbsdelf*)
+ 	armv7*) target_cpu_cname="generic-armv7-a";;
+ 	esac
+ 	;;
++arm-*-openbsd*)
++	tm_defines="${tm_defines} DEFAULT_FLAG_PIE=1"
++	tm_file="elfos.h arm/elf.h arm/aout.h arm/openbsd1.h arm/arm.h openbsd.h openbsd-stdint.h openbsd-libpthread.h arm/openbsd.h"
++	extra_options="${extra_options} openbsd.opt"
++	tmake_file="${tmake_file} arm/t-arm arm/t-bpabi"
++	target_cpu_cname="generic-armv7-a"
++	set
++	;;
+ arm*-*-linux-* | arm*-*-uclinuxfdpiceabi)
+ 	tm_file="elfos.h gnu-user.h linux.h linux-android.h glibc-stdint.h arm/elf.h arm/linux-gas.h arm/linux-elf.h"
+ 	extra_options="${extra_options} linux-android.opt"
+@@ -1872,10 +1895,11 @@ hppa*-*-linux*)
+ 	;;
+ hppa*-*-openbsd*)
+ 	target_cpu_default="MASK_PA_11"
++	tm_defines="${tm_defines} DEFAULT_FLAG_PIE=1"
+ 	tm_file="${tm_file} elfos.h openbsd.h openbsd-stdint.h openbsd-libpthread.h \
+ 		 pa/pa-openbsd.h pa/pa32-regs.h pa/pa32-openbsd.h"
+ 	extra_options="${extra_options} openbsd.opt"
+-	tmake_file="pa/t-pa"
++	tmake_file="${tmake_file} pa/t-pa"
+ 	d_target_objs="${d_target_objs} pa-d.o"
+ 	gas=yes
+ 	gnu_ld=yes
+@@ -1995,6 +2019,7 @@ x86_64-*-netbsd*)
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+ 	;;
+ i[34567]86-*-openbsd*)
++	tm_defines="${tm_defines} DEFAULT_FLAG_PIE=1"
+ 	tm_file="${tm_file} i386/unix.h i386/att.h elfos.h"
+ 	tm_file="${tm_file} openbsd.h openbsd-stdint.h openbsd-libpthread.h i386/openbsdelf.h"
+ 	extra_options="${extra_options} openbsd.opt"
+@@ -2002,12 +2027,25 @@ i[34567]86-*-openbsd*)
+ 	gnu_ld=yes
+ 	;;
+ x86_64-*-openbsd*)
++	tm_defines="${tm_defines} DEFAULT_FLAG_PIE=1 CF_DEFAULT=CF_BRANCH"
+ 	tm_file="${tm_file} i386/unix.h i386/att.h elfos.h"
+ 	tm_file="${tm_file} openbsd.h openbsd-stdint.h openbsd-libpthread.h i386/x86-64.h i386/openbsdelf.h"
+ 	extra_options="${extra_options} openbsd.opt"
+ 	gas=yes
+ 	gnu_ld=yes
+ 	;;
++mips64-*-openbsd*)
++	set
++	tm_file="elfos.h openbsd.h openbsd-stdint.h mips/mips.h mips/openbsd.h openbsd-libpthread.h"
++	tm_defines="${tm_defines} MIPS_ISA_DEFAULT=3 MIPS_ABI_DEFAULT=ABI_64 DEFAULT_FLAG_PIE=1"
++	extra_options="${extra_options} openbsd.opt"
++	;;
++mips64el-*-openbsd*)
++	set
++	tm_file="elfos.h openbsd.h openbsd-stdint.h mips/mips.h mips/openbsd.h openbsd-libpthread.h"
++	tm_defines="${tm_defines} MIPS_ISA_DEFAULT=3 MIPS_ABI_DEFAULT=ABI_64 TARGET_ENDIAN_DEFAULT=0 DEFAULT_FLAG_PIE=1"
++	extra_options="${extra_options} openbsd.opt"
++	;;
+ i[34567]86-*-linux* | i[34567]86-*-kfreebsd*-gnu | i[34567]86-*-gnu* | i[34567]86-*-kopensolaris*-gnu)
+ 			# Intel 80386's running GNU/*
+ 			# with ELF format using glibc 2
+@@ -2617,6 +2655,19 @@ mips*-*-netbsd*)			# NetBSD/mips, either endian.
+ 	tm_file="elfos.h ${tm_file} mips/elf.h ${nbsd_tm_file} mips/netbsd.h"
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+ 	;;
++riscv64-*-openbsd*)
++	tm_file="${tm_file} elfos.h"
++	tm_file="${tm_file} openbsd-stdint.h"
++	tm_file="${tm_file} openbsd.h riscv/openbsd.h openbsd-libpthread.h"
++	tmake_file="${tmake_file} riscv/t-riscv"
++	extra_options="${extra_options} openbsd.opt"
++	# Force .init_array support.  The configure script cannot always
++	# automatically detect that GAS supports it, yet we require it.
++	gcc_cv_initfini_array=yes
++	# Also force this, shouldn't hurt...
++	gnu_ld=yes
++	gas=yes
++	;;
+ mips*-img-linux*)
+ 	tm_file="elfos.h gnu-user.h linux.h linux-android.h glibc-stdint.h ${tm_file} mips/gnu-user.h mips/linux.h mips/linux-common.h mips/mti-linux.h"
+ 	extra_options="${extra_options} linux-android.opt"
+@@ -2969,6 +3020,18 @@ pdp11-*-*)
+ #	tmake_file="${tmake_file} rs6000/t-fprules"
+ #	extra_headers=
+ #	;;
++powerpc-*-openbsd*)
++	tm_defines="${tm_defines} DEFAULT_FLAG_PIE=2"
++	tm_file="rs6000/secureplt.h ${tm_file} elfos.h gnu-user.h openbsd.h openbsd-stdint.h openbsd-libpthread.h freebsd-spec.h rs6000/sysv4.h rs6000/openbsd.h"
++	tmake_file="${tmake_file} rs6000/t-openbsd"
++	extra_options="${extra_options} rs6000/sysv4.opt openbsd.opt"
++	;;
++powerpc64*-*-openbsd*)
++	tm_defines="${tm_defines} DEFAULT_FLAG_PIE=2"
++	tm_file="${tm_file} elfos.h gnu-user.h openbsd.h openbsd-stdint.h openbsd-libpthread.h freebsd-spec.h rs6000/sysv4.h rs6000/default64.h rs6000/openbsd64.h"
++	tmake_file="${tmake_file} rs6000/t-openbsd64"
++	extra_options="${extra_options} rs6000/sysv4.opt rs6000/linux64.opt openbsd.opt"
++	;;
+ powerpc-*-darwin*)
+ 	extra_options="${extra_options} ${cpu_type}/darwin.opt"
+ 	case ${target} in
+@@ -3534,10 +3597,10 @@ sparc64-*-netbsd*)
+ 	tmake_file="${tmake_file} sparc/t-sparc sparc/t-netbsd64"
+ 	;;
+ sparc64-*-openbsd*)
++	tm_defines="${tm_defines} DEFAULT_FLAG_PIE=2"
+ 	tm_file="sparc/openbsd1-64.h ${tm_file} elfos.h sparc/sysv4.h sparc/sp64-elf.h"
+ 	tm_file="${tm_file} openbsd.h openbsd-stdint.h openbsd-libpthread.h sparc/openbsd64.h"
+ 	extra_options="${extra_options} openbsd.opt"
+-	extra_options="${extra_options}"
+ 	gas=yes gnu_ld=yes
+ 	with_cpu=ultrasparc
+ 	tmake_file="${tmake_file} sparc/t-sparc"
+@@ -3728,6 +3791,12 @@ case ${target} in
+     arch_without_sse2=yes
+     arch_without_64bit=yes
+     ;;
++  i386-*-openbsd*)
++    arch=pentium
++    cpu=generic
++    arch_without_sse2=yes
++    arch_without_64bit=yes
++    ;;
+   i386-*-netbsd*)
+     arch=i486
+     cpu=generic
+diff --git a/gcc/config/aarch64/openbsd.h b/gcc/config/aarch64/openbsd.h
+new file mode 100644
+index 000000000..1ecfdfd29
+--- /dev/null
++++ b/gcc/config/aarch64/openbsd.h
+@@ -0,0 +1,116 @@
++/* Definitions of target machine for GNU compiler, OpenBSD/aarch64 ELF version.
++   Copyright (C) 2002 Free Software Foundation, Inc.
++
++This file is part of GNU CC.
++
++GNU CC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2, or (at your option)
++any later version.
++
++GNU CC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GNU CC; see the file COPYING.  If not, write to
++the Free Software Foundation, 59 Temple Place - Suite 330,
++Boston, MA 02111-1307, USA.  */
++
++/* Run-time Target Specification.  */
++//#undef TARGET_VERSION
++//#define TARGET_VERSION fputs (" (OpenBSD/arm)", stderr);
++
++/* This is used in ASM_FILE_START.  */
++//#undef ARM_OS_NAME
++//#define ARM_OS_NAME "OpenBSD"
++
++/* This defaults us to little-endian.  */
++#ifndef TARGET_ENDIAN_DEFAULT
++#define TARGET_ENDIAN_DEFAULT 0
++#endif
++
++#undef MULTILIB_DEFAULTS
++
++#define TARGET_OS_CPP_BUILTINS()	\
++  do					\
++    {					\
++      builtin_define ("__GXX_MERGED_TYPEINFO_NAMES=0"); \
++      OPENBSD_OS_CPP_BUILTINS_ELF();	\
++    }					\
++  while (0)
++
++#undef SUBTARGET_CPP_SPEC
++#define SUBTARGET_CPP_SPEC OBSD_CPP_SPEC
++
++#define LINK_SPEC \
++  "%{!shared:%{!nostdlib:%{!r:%{!e*:-e __start}}}} \
++   %{shared:-shared} %{R*} \
++   %{static:-Bstatic} \
++   %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
++   %{assert*} \
++   %{!static:-dynamic-linker /usr/libexec/ld.so} \
++   %{!nostdlib:-L/usr/lib}"
++
++#define OPENBSD_ENTRY_POINT "__start"
++
++/* Make GCC agree with <machine/_types.h>.  */
++
++#undef SIZE_TYPE
++#define SIZE_TYPE "long unsigned int"
++
++#undef PTRDIFF_TYPE
++#define PTRDIFF_TYPE "long int"
++
++#undef INTMAX_TYPE
++#define INTMAX_TYPE "long long int"
++
++#undef UINTMAX_TYPE
++#define UINTMAX_TYPE "long long unsigned int"
++
++#undef WCHAR_TYPE
++#define WCHAR_TYPE "int"
++
++#undef WCHAR_TYPE_SIZE
++#define WCHAR_TYPE_SIZE 32
++
++/* Provide a STARTFILE_SPEC appropriate for OpenBSD ELF.  Here we
++   provide support for the special GCC option -static.  On ELF
++   targets, we also add the crtbegin.o file, which provides part
++   of the support for getting C++ file-scope static objects
++   constructed before entering "main".  */
++
++#define OPENBSD_STARTFILE_SPEC	\
++  "%{!shared:			\
++     %{pg:gcrt0%O%s}		\
++     %{!pg:			\
++       %{p:gcrt0%O%s}		\
++       %{!p:%{!static:crt0%O%s} %{static:%{nopie:crt0%O%s} \
++        %{!nopie:rcrt0%O%s}}}}} \
++   %:if-exists(crti%O%s)	\
++   %{static:%:if-exists-else(crtbeginT%O%s crtbegin%O%s)} \
++   %{!static: \
++     %{!shared:crtbegin%O%s} %{shared:crtbeginS%O%s}}"
++
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC OPENBSD_STARTFILE_SPEC
++
++/* Provide an ENDFILE_SPEC appropriate for OpenBSD ELF.  Here we
++add crtend.o, which provides part of the support for getting
++C++ file-scope static objects deconstructed after exiting "main".  */
++
++#define OPENBSD_ENDFILE_SPEC     \
++  "%{!shared:crtend%O%s} %{shared:crtendS%O%s} \
++   %:if-exists(crtn%O%s)"
++
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC OPENBSD_ENDFILE_SPEC
++
++/* Remove -mcpu=native handling which is Linux specific */
++#undef DRIVER_SELF_SPECS
++#define DRIVER_SELF_SPECS ""
++
++/* dito */
++#undef EXTRA_SPEC_FUNCTIONS
+diff --git a/gcc/config/alpha/alpha.cc b/gcc/config/alpha/alpha.cc
+index 14e7da57c..3b78cc9e5 100644
+--- a/gcc/config/alpha/alpha.cc
++++ b/gcc/config/alpha/alpha.cc
+@@ -49,6 +49,7 @@ along with GCC; see the file COPYING3.  If not see
+ #include "varasm.h"
+ #include "output.h"
+ #include "insn-attr.h"
++#include "flags.h"
+ #include "explow.h"
+ #include "expr.h"
+ #include "reload.h"
+@@ -579,11 +580,17 @@ alpha_option_override (void)
+   if (!OPTION_SET_P (g_switch_value))
+     g_switch_value = 8;
+ 
++#ifdef OPENBSD_NATIVE
++  /* Make -fpic behave as -fPIC unless -msmall-data is specified. */
++  if (flag_pic == 2 && TARGET_SMALL_DATA)
++    warning (0, "-fPIC used with -msmall-data");
++#else
+   /* Infer TARGET_SMALL_DATA from -fpic/-fPIC.  */
+   if (flag_pic == 1)
+     target_flags |= MASK_SMALL_DATA;
+   else if (flag_pic == 2)
+     target_flags &= ~MASK_SMALL_DATA;
++#endif
+ 
+   alpha_override_options_after_change ();
+ 
+@@ -8063,8 +8070,6 @@ alpha_initial_elimination_offset (unsigned int from,
+   switch (from)
+     {
+     case FRAME_POINTER_REGNUM:
+-      break;
+-
+     case ARG_POINTER_REGNUM:
+       ret += (ALPHA_ROUND (get_frame_size ()
+ 			   + crtl->args.pretend_args_size)
+@@ -8447,6 +8452,9 @@ alpha_expand_prologue (void)
+   HOST_WIDE_INT reg_offset;
+   rtx sa_reg;
+ 
++  if (warn_stack_larger_than && frame_size > stack_larger_than_size)
++    warning (OPT_Wstack_larger_than_, "stack usage is %ld bytes", frame_size);
++
+   if (flag_stack_usage_info)
+     current_function_static_stack_size = frame_size;
+ 
+@@ -8483,6 +8491,8 @@ alpha_expand_prologue (void)
+   if (flag_stack_check || flag_stack_clash_protection)
+     probed_size += get_stack_check_protect ();
+ 
++if (flag_stack_check || STACK_CHECK_BUILTIN)
++  {
+   if (probed_size <= 32768)
+     {
+       if (probed_size > 4096)
+@@ -8563,6 +8573,34 @@ alpha_expand_prologue (void)
+ 				 plus_constant (Pmode, stack_pointer_rtx,
+ 						-frame_size)));
+     }
++    }
++  else
++    {
++      if (frame_size <= 32768)
++	{
++	  if (frame_size != 0)
++	    FRP (emit_insn (gen_adddi3 (stack_pointer_rtx, stack_pointer_rtx,
++					GEN_INT (-frame_size))));
++	}
++      else
++	{
++	  rtx count = gen_rtx_REG (DImode, 23);
++	  rtx seq;
++ 
++	  emit_move_insn (count, GEN_INT (-frame_size));
++	  seq = emit_insn (gen_adddi3 (stack_pointer_rtx, stack_pointer_rtx,
++				       count));
++ 
++	  /* This alternative is special, because the DWARF code cannot
++	     possibly intuit through the loop above.  So we invent this
++	     note it looks at instead.  */
++	  RTX_FRAME_RELATED_P (seq) = 1;
++          add_reg_note (seq, REG_FRAME_RELATED_EXPR,
++		    gen_rtx_SET (stack_pointer_rtx,
++				 plus_constant (Pmode, stack_pointer_rtx,
++						-frame_size)));
++	}
++    }
+ 
+   /* Cope with very large offsets to the register save area.  */
+   sa_bias = 0;
+@@ -9364,11 +9402,15 @@ summarize_insn (rtx x, struct shadow_summary *sum, int set)
+    result of an instruction that might generate an UNPREDICTABLE
+    result.
+ 
+-   (c) Within the trap shadow, no register may be used more than once
++   (c) Within the trap shadow, the destination register of the potentially
++   trapping instruction may not be used as an input, for its value would be
++   UNPREDICTABLE.
++
++   (d) Within the trap shadow, no register may be used more than once
+    as a destination register.  (This is to make life easier for the
+    trap-handler.)
+ 
+-   (d) The trap shadow may not include any branch instructions.  */
++   (e) The trap shadow may not include any branch instructions.  */
+ 
+ static void
+ alpha_handle_trap_shadows (void)
+@@ -9440,7 +9482,7 @@ alpha_handle_trap_shadows (void)
+ 		      if ((sum.defd.i & shadow.defd.i)
+ 			  || (sum.defd.fp & shadow.defd.fp))
+ 			{
+-			  /* (c) would be violated */
++			  /* (d) would be violated */
+ 			  goto close_shadow;
+ 			}
+ 
+@@ -9463,6 +9505,13 @@ alpha_handle_trap_shadows (void)
+ 
+ 			  goto close_shadow;
+ 			}
++
++		      if ((sum.used.i & shadow.defd.i)
++			  || (sum.used.fp & shadow.defd.fp))
++			{
++			  /* (c) would be violated */
++			  goto close_shadow;
++			}
+ 		      break;
+ 
+ 		    case BARRIER:
+@@ -9473,6 +9522,7 @@ alpha_handle_trap_shadows (void)
+ 		    case JUMP_INSN:
+ 		    case CALL_INSN:
+ 		    case CODE_LABEL:
++		      /* (e) would be violated */
+ 		      goto close_shadow;
+ 
+ 		    case DEBUG_INSN:
+diff --git a/gcc/config/alpha/alpha.h b/gcc/config/alpha/alpha.h
+index ffa826f01..a446363ac 100644
+--- a/gcc/config/alpha/alpha.h
++++ b/gcc/config/alpha/alpha.h
+@@ -483,7 +483,7 @@ enum reg_class {
+    is at the high-address end of the local variables;
+    that is, each additional local variable allocated
+    goes at a more negative offset in the frame.  */
+-/* #define FRAME_GROWS_DOWNWARD 0 */
++#define FRAME_GROWS_DOWNWARD 1
+ 
+ /* If we generate an insn to push BYTES bytes,
+    this says how many the stack pointer really advances by.
+diff --git a/gcc/config/alpha/alpha.md b/gcc/config/alpha/alpha.md
+index a44178d9a..37c5855e9 100644
+--- a/gcc/config/alpha/alpha.md
++++ b/gcc/config/alpha/alpha.md
+@@ -4953,7 +4953,8 @@
+   if (CONST_INT_P (operands[1])
+       && INTVAL (operands[1]) < 32768)
+     {
+-      if (INTVAL (operands[1]) >= 4096)
++      if (INTVAL (operands[1]) >= 4096
++	&& (flag_stack_check || STACK_CHECK_BUILTIN))
+ 	{
+ 	  /* We do this the same way as in the prologue and generate explicit
+ 	     probes.  Then we update the stack by the constant.  */
+diff --git a/gcc/config/alpha/alpha.opt b/gcc/config/alpha/alpha.opt
+index 3c1320b51..7ec704b0e 100644
+--- a/gcc/config/alpha/alpha.opt
++++ b/gcc/config/alpha/alpha.opt
+@@ -38,6 +38,10 @@ mieee
+ Target RejectNegative Mask(IEEE)
+ Emit IEEE-conformant code, without inexact exceptions.
+ 
++mno-ieee
++Target RejectNegative InverseMask(IEEE)
++Emit non-IEEE-conformant code
++
+ mieee-with-inexact
+ Target RejectNegative Mask(IEEE_WITH_INEXACT)
+ 
+diff --git a/gcc/config/alpha/openbsd.h b/gcc/config/alpha/openbsd.h
+index 323f0abee..f527dcd36 100644
+--- a/gcc/config/alpha/openbsd.h
++++ b/gcc/config/alpha/openbsd.h
+@@ -41,6 +41,28 @@ along with GCC; see the file COPYING3.  If not see
+ #undef ENDFILE_SPEC
+ #define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
+ 
++#undef TARGET_DEFAULT
++#define TARGET_DEFAULT \
++	(MASK_FPREGS | MASK_IEEE | MASK_IEEE_CONFORMANT)
++
++#define LINK_SPEC \
++  "%{!shared:%{!nostdlib:%{!r:%{!e*:-e __start}}}} \
++   %{shared:-shared} %{R*} \
++   %{static:-Bstatic} \
++   %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
++   %{assert*} \
++   %{!static:-dynamic-linker /usr/libexec/ld.so}"
++
++/* As an elf system, we need crtbegin/crtend stuff.  */
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC "\
++	%{!shared: %{pg:gcrt0%O%s} %{!pg:%{p:gcrt0%O%s} \
++	%{!p:%{!static:crt0%O%s} %{static:%{nopie:crt0%O%s} \
++	%{!nopie:rcrt0%O%s}}}} crtbegin%O%s} %{shared:crtbeginS%O%s}"
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
++
+ /* run-time target specifications */
+ #define TARGET_OS_CPP_BUILTINS()		\
+     do {					\
+diff --git a/gcc/config/arm/arm.h b/gcc/config/arm/arm.h
+index 8472b7561..4911f858a 100644
+--- a/gcc/config/arm/arm.h
++++ b/gcc/config/arm/arm.h
+@@ -2508,7 +2508,7 @@ extern const char *arm_target_mode (int argc, const char **argv);
+ 
+ /* -mcpu=native handling only makes sense with compiler running on
+    an ARM chip.  */
+-#if defined(__arm__)
++#if defined(__arm__) && (defined(__linux__) || defined(__FreeBSD__))
+ extern const char *host_detect_local_cpu (int argc, const char **argv);
+ #define HAVE_LOCAL_CPU_DETECT
+ # define MCPU_MTUNE_NATIVE_FUNCTIONS			\
+diff --git a/gcc/config/arm/openbsd.h b/gcc/config/arm/openbsd.h
+new file mode 100644
+index 000000000..57893f920
+--- /dev/null
++++ b/gcc/config/arm/openbsd.h
+@@ -0,0 +1,250 @@
++/* Definitions of target machine for GNU compiler, OpenBSD/arm ELF version.
++   Copyright (C) 2002 Free Software Foundation, Inc.
++   Contributed by Wasabi Systems, Inc.
++
++This file is part of GNU CC.
++
++GNU CC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2, or (at your option)
++any later version.
++
++GNU CC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GNU CC; see the file COPYING.  If not, write to
++the Free Software Foundation, 59 Temple Place - Suite 330,
++Boston, MA 02111-1307, USA.  */
++
++/* Run-time Target Specification.  */
++//#undef TARGET_VERSION
++//#define TARGET_VERSION fputs (" (OpenBSD/arm)", stderr);
++
++/* This is used in ASM_FILE_START.  */
++//#undef ARM_OS_NAME
++//#define ARM_OS_NAME "OpenBSD"
++
++/* Unsigned chars produces much better code than signed.  */
++#define DEFAULT_SIGNED_CHAR  0
++
++
++/* This defaults us to little-endian.  */
++#ifndef TARGET_ENDIAN_DEFAULT
++#define TARGET_ENDIAN_DEFAULT 0
++#endif
++
++#undef MULTILIB_DEFAULTS
++
++/* armv5te default cpu.  */
++#define SUBTARGET_CPU_DEFAULT TARGET_CPU_mpcore
++
++/* We default to a soft-float ABI so that binaries can run on all
++   target hardware.  */
++#undef TARGET_DEFAULT_FLOAT_ABI
++#define TARGET_DEFAULT_FLOAT_ABI ARM_FLOAT_ABI_SOFT
++
++/* We default to the "aapcs-linux" ABI so that enums are int-sized by
++   default.  */
++#undef ARM_DEFAULT_ABI
++#define ARM_DEFAULT_ABI ARM_ABI_AAPCS_LINUX
++
++
++#define TARGET_OS_CPP_BUILTINS()	\
++  do					\
++    {					\
++      builtin_define ("__GXX_MERGED_TYPEINFO_NAMES=0"); \
++      OPENBSD_OS_CPP_BUILTINS_ELF();	\
++    }					\
++  while (0)
++
++#undef SUBTARGET_CPP_SPEC
++#define SUBTARGET_CPP_SPEC OBSD_CPP_SPEC
++
++/* OBSD_LINK_SPEC appropriate for OpenBSD.  Support for GCC options
++   -static, -assert, and -nostdlib.  */
++#undef OBSD_LINK_SPEC
++#ifdef OBSD_NO_DYNAMIC_LIBRARIES
++#define OBSD_LINK_SPEC \
++  "%{!nostdlib:%{!r:%{!e*:-e __start}}} %{assert*}"
++#else
++#define OBSD_LINK_SPEC \
++  "%{!shared:%{!nostdlib:%{!r:%{!e*:-e __start}}}} \
++   %{shared:-shared} %{R*} \
++   %{static:-Bstatic} \
++   %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
++   %{assert*} \
++   %{!static:-dynamic-linker /usr/libexec/ld.so} \
++   %{!nostdlib:-L/usr/lib}"
++#endif
++
++#undef SUBTARGET_EXTRA_ASM_SPEC
++#define SUBTARGET_EXTRA_ASM_SPEC	\
++  "%{mabi=apcs-gnu|mabi=atpcs:-meabi=gnu;:-meabi=4} %{fpic|fPIC|fpie|fPIE:-k}"
++
++/* Default floating point model is soft-VFP.
++   FIXME: -mhard-float currently implies FPA.  */
++#undef SUBTARGET_ASM_FLOAT_SPEC
++#define SUBTARGET_ASM_FLOAT_SPEC	\
++  "%{mhard-float:-mfpu=fpa} \
++   %{msoft-float:-mfpu=softvfp} \
++   %{!mhard-float: \
++     %{!msoft-float:-mfpu=softvfp}}"
++
++#undef SUBTARGET_EXTRA_SPECS
++#define SUBTARGET_EXTRA_SPECS				\
++  { "subtarget_extra_asm_spec",	SUBTARGET_EXTRA_ASM_SPEC }, \
++  { "subtarget_asm_float_spec", SUBTARGET_ASM_FLOAT_SPEC }, \
++  { "openbsd_link_spec",	OBSD_LINK_SPEC },	\
++  { "openbsd_entry_point",	OPENBSD_ENTRY_POINT },
++
++#define OPENBSD_ENTRY_POINT "__start"
++
++/* Pass -X to the linker so that it will strip symbols starting with 'L' */
++#undef LINK_SPEC
++#define LINK_SPEC \
++  "-X %{mbig-endian:-EB} %{mlittle-endian:-EL} \
++   %(openbsd_link_spec)"
++
++/* Make GCC agree with <machine/_types.h>.  */
++
++#undef SIZE_TYPE
++#define SIZE_TYPE "long unsigned int"
++
++#undef PTRDIFF_TYPE
++#define PTRDIFF_TYPE "long int"
++
++#undef INTMAX_TYPE
++#define INTMAX_TYPE "long long int"
++
++#undef UINTMAX_TYPE
++#define UINTMAX_TYPE "long long unsigned int"
++
++#undef WCHAR_TYPE
++#define WCHAR_TYPE "int"
++
++#undef WCHAR_TYPE_SIZE
++#define WCHAR_TYPE_SIZE 32
++
++/* We don't have any limit on the length as out debugger is GDB.  */
++#undef DBX_CONTIN_LENGTH
++
++/* OpenBSD and NetBSD do their profiling differently to the Acorn compiler. We
++   don't need a word following the mcount call; and to skip it
++   requires either an assembly stub or use of fomit-frame-pointer when
++   compiling the profiling functions.  Since we break Acorn CC
++   compatibility below a little more won't hurt.  */
++
++#undef ARM_FUNCTION_PROFILER
++#define ARM_FUNCTION_PROFILER(STREAM,LABELNO)		\
++{							\
++  asm_fprintf (STREAM, "\tmov\t%Rip, %Rlr\n");		\
++  asm_fprintf (STREAM, "\tbl\t__mcount%s\n",		\
++	       NEED_PLT_RELOC ? "(PLT)" : "");		\
++}
++
++/* On the ARM `@' introduces a comment, so we must use something else
++   for .type directives.  */
++#undef TYPE_OPERAND_FMT
++#define TYPE_OPERAND_FMT "%%%s"
++
++#undef FPUTYPE_DEFAULT
++#define FPUTYPE_DEFAULT "vfp"
++
++/* VERY BIG NOTE: Change of structure alignment for OpenBSD|NetBSD/arm.
++   There are consequences you should be aware of...
++
++   Normally GCC/arm uses a structure alignment of 32 for compatibility
++   with armcc.  This means that structures are padded to a word
++   boundary.  However this causes problems with bugged OpenBSD|NetBSD kernel
++   code (possibly userland code as well - I have not checked every
++   binary).  The nature of this bugged code is to rely on sizeof()
++   returning the correct size of various structures rounded to the
++   nearest byte (SCSI and ether code are two examples, the vm system
++   is another).  This code breaks when the structure alignment is 32
++   as sizeof() will report a word=rounded size.  By changing the
++   structure alignment to 8. GCC will conform to what is expected by
++   OpenBSD|NetBSD.
++
++   This has several side effects that should be considered.
++   1. Structures will only be aligned to the size of the largest member.
++      i.e. structures containing only bytes will be byte aligned.
++	   structures containing shorts will be half word alinged.
++	   structures containing ints will be word aligned.
++
++      This means structures should be padded to a word boundary if
++      alignment of 32 is required for byte structures etc.
++
++   2. A potential performance penalty may exist if strings are no longer
++      word aligned.  GCC will not be able to use word load/stores to copy
++      short strings.
++
++   This modification is not encouraged but with the present state of the
++   OpenBSD|NetBSD source tree it is currently the only solution that meets the
++   requirements.  */
++
++#undef DEFAULT_STRUCTURE_SIZE_BOUNDARY
++#define DEFAULT_STRUCTURE_SIZE_BOUNDARY 8
++
++/* Clear the instruction cache from `BEG' to `END'.  This makes a
++   call to the ARM_SYNC_ICACHE architecture specific syscall.  */
++#define CLEAR_INSN_CACHE(BEG, END)					\
++do									\
++  {									\
++    extern int sysarch(int number, void *args);				\
++    struct {								\
++	unsigned int addr;						\
++	int          len;						\
++    } s;								\
++    s.addr = (unsigned int)(BEG);					\
++    s.len = (END) - (BEG);						\
++    (void) sysarch (0, &s);						\
++  }									\
++while (0)
++
++/* Provide a STARTFILE_SPEC appropriate for OpenBSD ELF.  Here we
++   provide support for the special GCC option -static.  On ELF
++   targets, we also add the crtbegin.o file, which provides part
++   of the support for getting C++ file-scope static objects
++   constructed before entering "main".  */
++
++#define OPENBSD_STARTFILE_SPEC	\
++  "%{!shared:			\
++     %{pg:gcrt0%O%s}		\
++     %{!pg:			\
++       %{p:gcrt0%O%s}		\
++       %{!p:%{!static:crt0%O%s} %{static:%{nopie:crt0%O%s} \
++        %{!nopie:rcrt0%O%s}}}}} \
++   %:if-exists(crti%O%s)	\
++   %{static:%:if-exists-else(crtbeginT%O%s crtbegin%O%s)} \
++   %{!static: \
++     %{!shared:crtbegin%O%s} %{shared:crtbeginS%O%s}}"
++
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC OPENBSD_STARTFILE_SPEC
++
++/* Provide an ENDFILE_SPEC appropriate for OpenBSD ELF.  Here we
++add crtend.o, which provides part of the support for getting
++C++ file-scope static objects deconstructed after exiting "main".  */
++
++#define OPENBSD_ENDFILE_SPEC     \
++  "%{!shared:crtend%O%s} %{shared:crtendS%O%s} \
++   %:if-exists(crtn%O%s)"
++
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC OPENBSD_ENDFILE_SPEC
++
++/* Remove -mcpu=native handling which is Linux specific */
++#undef DRIVER_SELF_SPECS
++#define DRIVER_SELF_SPECS ""
++
++#define SUBTARGET_OVERRIDE_INTERNAL_OPTIONS                             \
++do {                                                                    \
++    if (opts_set->x_unaligned_access == 1)                              \
++        warning (0, "target OS does not support unaligned accesses");   \
++    if (opts->x_unaligned_access)                                       \
++        opts->x_unaligned_access = 0;                                   \
++} while (0)
+diff --git a/gcc/config/arm/openbsd1.h b/gcc/config/arm/openbsd1.h
+new file mode 100644
+index 000000000..01e667601
+--- /dev/null
++++ b/gcc/config/arm/openbsd1.h
+@@ -0,0 +1,26 @@
++/* Definitions of target machine for GNU compiler, OpenBSD/arm ELF version.
++   Copyright (C) 2002 Free Software Foundation, Inc.
++   Contributed by Wasabi Systems, Inc.
++
++This file is part of GNU CC.
++
++GNU CC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2, or (at your option)
++any later version.
++
++GNU CC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GNU CC; see the file COPYING.  If not, write to
++the Free Software Foundation, 59 Temple Place - Suite 330,
++Boston, MA 02111-1307, USA.  */
++
++#define OBSD_HAS_DECLARE_FUNCTION_NAME
++#define OBSD_HAS_DECLARE_FUNCTION_SIZE
++
++/* use EABI frame unwinding tables.  */
++#define ARM_UNWIND_INFO 1
+diff --git a/gcc/config/exec-stack.h b/gcc/config/exec-stack.h
+new file mode 100644
+index 000000000..23cc611fd
+--- /dev/null
++++ b/gcc/config/exec-stack.h
+@@ -0,0 +1,40 @@
++/* Enable stack execute around trampoline address.  
++   Copyright (C) 2002 Free Software Foundation, Inc.
++
++This file is part of GNU CC.
++
++GNU CC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2, or (at your option)
++any later version.
++
++GNU CC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GNU CC; see the file COPYING.  If not, write to
++the Free Software Foundation, 59 Temple Place - Suite 330,
++Boston, MA 02111-1307, USA.  */
++
++#undef FINALIZE_TRAMPOLINE
++#define FINALIZE_TRAMPOLINE(TRAMP) \
++  emit_library_call(gen_rtx_SYMBOL_REF (Pmode, "__enable_execute_stack"), \
++		    0, VOIDmode, 1, memory_address (SImode, (TRAMP)), Pmode)
++
++#undef TRANSFER_FROM_TRAMPOLINE
++#define TRANSFER_FROM_TRAMPOLINE					\
++extern void __enable_execute_stack (void *);				\
++void									\
++__enable_execute_stack (addr)						\
++     void *addr;							\
++{									\
++  long size = getpagesize ();						\
++  long mask = ~(size-1);						\
++  char *page = (char *) (((long) addr) & mask); 			\
++  char *end  = (char *) ((((long) (addr + TRAMPOLINE_SIZE)) & mask) + size); \
++								      \
++  if (mprotect (page, end - page, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) \
++    perror ("mprotect of trampoline code");				\
++}
+diff --git a/gcc/config/i386/i386.cc b/gcc/config/i386/i386.cc
+index a6f0a582c..0ed5938df 100644
+--- a/gcc/config/i386/i386.cc
++++ b/gcc/config/i386/i386.cc
+@@ -6934,6 +6934,7 @@ ix86_compute_frame_layout (void)
+ 	}
+     }
+ 
++  frame->local_size = size;
+   frame->nregs = ix86_nsaved_regs ();
+   frame->nsseregs = ix86_nsaved_sseregs ();
+ 
+@@ -8995,6 +8996,9 @@ ix86_expand_prologue (void)
+ 	}
+     }
+ 
++  if (warn_stack_larger_than && frame.local_size > stack_larger_than_size)
++    warning (OPT_Wstack_larger_than_, "stack usage is %lld bytes", frame.local_size);
++
+   int_registers_saved = (frame.nregs == 0);
+   sse_registers_saved = (frame.nsseregs == 0);
+   save_stub_call_needed = (m->call_ms2sysv);
+diff --git a/gcc/config/i386/i386.h b/gcc/config/i386/i386.h
+index ab6ba2183..93d8a25e0 100644
+--- a/gcc/config/i386/i386.h
++++ b/gcc/config/i386/i386.h
+@@ -2691,6 +2691,8 @@ struct GTY(()) ix86_frame
+   HOST_WIDE_INT stack_realign_offset;
+   HOST_WIDE_INT sse_reg_save_offset;
+ 
++  HOST_WIDE_INT local_size;
++
+   /* When save_regs_using_mov is set, emit prologue using
+      move instead of push instructions.  */
+   bool save_regs_using_mov;
+diff --git a/gcc/config/i386/openbsdelf.h b/gcc/config/i386/openbsdelf.h
+index bd63226b3..49608883d 100644
+--- a/gcc/config/i386/openbsdelf.h
++++ b/gcc/config/i386/openbsdelf.h
+@@ -75,14 +75,18 @@ along with GCC; see the file COPYING3.  If not see
+    %{shared:-shared} %{R*} \
+    %{static:-Bstatic} \
+    %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
+    %{assert*} \
+-   -dynamic-linker /usr/libexec/ld.so"
++   %{!static:-dynamic-linker /usr/libexec/ld.so} \
++   %{!nostdlib:-L/usr/lib}"
+ 
+ #undef STARTFILE_SPEC
+-#define STARTFILE_SPEC "\
+-	%{!shared: %{pg:gcrt0%O%s} %{!pg:%{p:gcrt0%O%s} %{!p:crt0%O%s}} \
+-	crtbegin%O%s} %{shared:crtbeginS%O%s}"
+ 
++#define SUBTARGET32_DEFAULT_CPU "i586"
++#define STARTFILE_SPEC "\
++	%{!shared: %{pg:gcrt0%O%s} %{!pg:%{p:gcrt0%O%s} \
++	%{!p:%{!static:crt0%O%s} %{static:%{nopie:crt0%O%s} \
++	%{!nopie:rcrt0%O%s}}}} crtbegin%O%s} %{shared:crtbeginS%O%s}"
+ #undef ENDFILE_SPEC
+ #define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
+ 
+diff --git a/gcc/config/mips/mips.h b/gcc/config/mips/mips.h
+index e224ade2a..da32a93e8 100644
+--- a/gcc/config/mips/mips.h
++++ b/gcc/config/mips/mips.h
+@@ -1519,7 +1519,9 @@ FP_ASM_SPEC "\
+ #define SUBTARGET_CPP_SPEC ""
+ #endif
+ 
++#ifndef CPP_SPEC
+ #define CPP_SPEC "%(subtarget_cpp_spec)"
++#endif
+ 
+ /* This macro defines names of additional specifications to put in the specs
+    that can be used in various specifications like CC1_SPEC.  Its definition
+@@ -3467,6 +3469,7 @@ struct GTY(())  machine_function {
+ 
+ /* If we are *not* using multilibs and the default ABI is not ABI_32 we
+    need to change these from /lib and /usr/lib.  */
++/*
+ #ifndef ENABLE_MULTIARCH
+ #if MIPS_ABI_DEFAULT == ABI_N32
+ #define STANDARD_STARTFILE_PREFIX_1 "/lib32/"
+@@ -3476,7 +3479,7 @@ struct GTY(())  machine_function {
+ #define STANDARD_STARTFILE_PREFIX_2 "/usr/lib64/"
+ #endif
+ #endif
+-
++*/
+ /* Load store bonding is not supported by micromips and fix_24k.  The
+    performance can be degraded for those targets.  Hence, do not bond for
+    micromips or fix_24k.  */
+diff --git a/gcc/config/mips/openbsd.h b/gcc/config/mips/openbsd.h
+new file mode 100644
+index 000000000..aa51701c2
+--- /dev/null
++++ b/gcc/config/mips/openbsd.h
+@@ -0,0 +1,227 @@
++/* Configuration file for a mips64 OpenBSD target.
++   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006
++   Free Software Foundation, Inc.
++
++This file is part of GCC.
++
++GCC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2, or (at your option)
++any later version.
++
++GCC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GCC; see the file COPYING.  If not, write to
++the Free Software Foundation, 51 Franklin Street, Fifth Floor,
++Boston, MA 02110-1301, USA.  */
++
++/* This must agree with <machine/_types.h> */
++#undef SIZE_TYPE
++#define SIZE_TYPE "long unsigned int"
++
++#undef PTRDIFF_TYPE
++#define PTRDIFF_TYPE "long int"
++
++#undef INTMAX_TYPE
++#define INTMAX_TYPE "long long int"
++
++#undef UINTMAX_TYPE
++#define UINTMAX_TYPE "long long unsigned int"
++
++#undef WCHAR_TYPE
++#define WCHAR_TYPE "int"
++
++#undef WCHAR_TYPE_SIZE
++#define WCHAR_TYPE_SIZE 32
++
++#if 0
++/* dropped in 2007 in 311f69621cc28f7a626407f55cf2d60392856ccf
++ * See also 2f14b1f9d493c8f64d5ff6b284bfe91ad8433d37 */
++
++/* If defined, a C expression whose value is a string containing the
++   assembler operation to identify the following data as
++   uninitialized global data.  If not defined, and neither
++   `ASM_OUTPUT_BSS' nor `ASM_OUTPUT_ALIGNED_BSS' are defined,
++   uninitialized global data will be output in the data section if
++   `-fno-common' is passed, otherwise `ASM_OUTPUT_COMMON' will be
++   used.  */
++#define BSS_SECTION_ASM_OP	"\t.section\t.bss"
++
++#define ASM_OUTPUT_ALIGNED_BSS mips_output_aligned_bss
++#endif
++
++#undef ASM_DECLARE_OBJECT_NAME
++#define ASM_DECLARE_OBJECT_NAME mips_declare_object_name
++
++#undef MD_EXEC_PREFIX
++#undef MD_STARTFILE_PREFIX
++
++/* If we don't set MASK_ABICALLS, we can't default to PIC.  */
++#undef TARGET_DEFAULT
++#define TARGET_DEFAULT MASK_ABICALLS
++
++#define TARGET_OS_CPP_BUILTINS()				\
++  do {								\
++    OPENBSD_OS_CPP_BUILTINS();					\
++								\
++    if (TARGET_64BIT)						\
++      builtin_define ("__mips64__");				\
++								\
++    if (TARGET_ABICALLS)					\
++      builtin_define ("__ABICALLS__");				\
++								\
++    if (mips_abi == ABI_EABI)					\
++      builtin_define ("__mips_eabi");				\
++    else if (mips_abi == ABI_N32)				\
++      builtin_define ("__mips_n32");				\
++    else if (mips_abi == ABI_64)				\
++      builtin_define ("__mips_n64");				\
++    else if (mips_abi == ABI_O64)				\
++      builtin_define ("__mips_o64");				\
++    								\
++    if (mips_abi == ABI_N32)					\
++      {								\
++        builtin_define ("_ABIN32=2");				\
++        builtin_define ("_MIPS_SIM=_ABIN32");			\
++        builtin_define ("_MIPS_SZLONG=32");			\
++        builtin_define ("_MIPS_SZPTR=32");			\
++      }								\
++    else if (mips_abi == ABI_64)				\
++      {								\
++        builtin_define ("_ABI64=3");				\
++        builtin_define ("_MIPS_SIM=_ABI64");			\
++        builtin_define ("_MIPS_SZLONG=64");			\
++        builtin_define ("_MIPS_SZPTR=64");			\
++      }								\
++    else							\
++      {								\
++	builtin_define ("_ABIO32=1");				\
++	builtin_define ("_MIPS_SIM=_ABIO32");			\
++        builtin_define ("_MIPS_SZLONG=32");			\
++        builtin_define ("_MIPS_SZPTR=32");			\
++      }								\
++    if (TARGET_FLOAT64)						\
++      builtin_define ("_MIPS_FPSET=32");			\
++    else							\
++      builtin_define ("_MIPS_FPSET=16");			\
++    								\
++    builtin_define ("_MIPS_SZINT=32");				\
++  } while (0)
++
++#undef SUBTARGET_CPP_SPEC
++#define SUBTARGET_CPP_SPEC OBSD_CPP_SPEC
++
++/* A standard GNU/Linux mapping.  On most targets, it is included in
++   CC1_SPEC itself by config/linux.h, but mips.h overrides CC1_SPEC
++   and provides this hook instead.  */
++#undef SUBTARGET_CC1_SPEC
++#define SUBTARGET_CC1_SPEC "%{profile:-p}"
++
++/* From iris5.h */
++/* -G is incompatible with -KPIC which is the default, so only allow objects
++   in the small data section if the user explicitly asks for it.  */
++#undef MIPS_DEFAULT_GVALUE
++#define MIPS_DEFAULT_GVALUE 0
++
++/* Borrowed from sparc/linux.h */
++#undef LINK_SPEC
++#define LINK_SPEC \
++  "%(endian_spec) \
++   %{!shared:%{!nostdlib:%{!r*:%{!e*:-e __start}}}} \
++   %{shared:-shared} %{R*} \
++   %{static:-Bstatic} \
++   %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
++   %{assert*} \
++   %{!static:-dynamic-linker /usr/libexec/ld.so}"
++
++/* As an elf system, we need crtbegin/crtend stuff.  */
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC "\
++	%{!shared: %{pg:gcrt0%O%s} %{!pg:%{p:gcrt0%O%s} \
++	%{!p:%{!static:crt0%O%s} %{static:%{nopie:crt0%O%s} \
++	%{!nopie:rcrt0%O%s}}}} \
++        crtbegin%O%s} %{shared:crtbeginS%O%s}"
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
++
++#undef SUBTARGET_ASM_SPEC
++#define SUBTARGET_ASM_SPEC "%{mabi=64: -64} %{!mno-abicalls:-KPIC}"
++
++/* The MIPS assembler has different syntax for .set. We set it to
++   .dummy to trap any errors.  */
++#undef SET_ASM_OP
++#define SET_ASM_OP "\t.dummy\t"
++
++#undef ASM_OUTPUT_DEF
++#define ASM_OUTPUT_DEF(FILE,LABEL1,LABEL2)				\
++ do {									\
++	fputc ( '\t', FILE);						\
++	assemble_name (FILE, LABEL1);					\
++	fputs ( " = ", FILE);						\
++	assemble_name (FILE, LABEL2);					\
++	fputc ( '\n', FILE);						\
++ } while (0)
++
++
++#if 0
++gone with a8cceccd90827cb0920c0af1ed823e37d8d72e2a
++
++#undef ASM_DECLARE_FUNCTION_NAME
++#define ASM_DECLARE_FUNCTION_NAME(STREAM, NAME, DECL)			\
++  do {									\
++    if (!flag_inhibit_size_directive)					\
++      {									\
++	fputs ("\t.ent\t", STREAM);					\
++	assemble_name (STREAM, NAME);					\
++	putc ('\n', STREAM);						\
++      }									\
++    ASM_OUTPUT_TYPE_DIRECTIVE (STREAM, NAME, "function");		\
++    assemble_name (STREAM, NAME);					\
++    fputs (":\n", STREAM);						\
++  } while (0)
++
++#undef ASM_DECLARE_FUNCTION_SIZE
++#define ASM_DECLARE_FUNCTION_SIZE(STREAM, NAME, DECL)			\
++  do {									\
++    if (!flag_inhibit_size_directive)					\
++      {									\
++	fputs ("\t.end\t", STREAM);					\
++	assemble_name (STREAM, NAME);					\
++	putc ('\n', STREAM);						\
++      }									\
++  } while (0)
++
++/* Tell function_prologue in mips.c that we have already output the .ent/.end
++   pseudo-ops.  */
++#undef FUNCTION_NAME_ALREADY_DECLARED
++#define FUNCTION_NAME_ALREADY_DECLARED 1
++#endif
++
++#undef LOCAL_LABEL_PREFIX
++#define LOCAL_LABEL_PREFIX	"."
++
++/* The glibc _mcount stub will save $v0 for us.  Don't mess with saving
++   it, since ASM_OUTPUT_REG_PUSH/ASM_OUTPUT_REG_POP do not work in the
++   presence of $gp-relative calls.  */
++#undef ASM_OUTPUT_REG_PUSH
++#undef ASM_OUTPUT_REG_POP
++
++#undef LIB_SPEC
++#define LIB_SPEC OBSD_LIB_SPEC
++
++/* #undef ENABLE_EXECUTE_STACK */
++
++/* Default to -mfix-r4000 -mfix-r4400 when compiling big endian.  */
++#undef SUBTARGET_OVERRIDE_OPTIONS
++#define SUBTARGET_OVERRIDE_OPTIONS					\
++  do {									\
++    if (TARGET_BIG_ENDIAN)						\
++      {									\
++	target_flags |= MASK_FIX_R4000 | MASK_FIX_R4400;		\
++      }									\
++  } while (0)
+diff --git a/gcc/config/openbsd-libpthread.h b/gcc/config/openbsd-libpthread.h
+index 81ccb1c61..326e20ea8 100644
+--- a/gcc/config/openbsd-libpthread.h
++++ b/gcc/config/openbsd-libpthread.h
+@@ -18,5 +18,5 @@
+    along with GCC; see the file COPYING3.  If not see
+    <http://www.gnu.org/licenses/>.  */
+ 
+-#define OBSD_LIB_SPEC "%{!shared:%{pthread:-lpthread} -lc}"
++#define OBSD_LIB_SPEC "%{pthread:-lpthread%{!shared:%{p|pg:_p}}} %{!shared:-lc%{p:_p}%{!p:%{pg:_p}}}"
+ 
+diff --git a/gcc/config/openbsd.h b/gcc/config/openbsd.h
+index bb1bae3a5..5ac2cd0c7 100644
+--- a/gcc/config/openbsd.h
++++ b/gcc/config/openbsd.h
+@@ -40,6 +40,10 @@ along with GCC; see the file COPYING3.  If not see
+    intended as common ground for arch that don't provide
+    anything suitable.  */
+ 
++/* Make sure that gcc will not look for .h files in /usr/local/include
++   unless user explicitly requests it.  */
++#undef LOCAL_INCLUDE_DIR
++
+ /* OPENBSD_NATIVE is defined only when gcc is configured as part of
+    the OpenBSD source tree, specifically through Makefile.bsd-wrapper.
+ 
+@@ -108,9 +112,9 @@ while (0)
+    This two-stage defines makes it easy to pick that for targets that
+    have subspecs.  */
+ #ifdef CPP_CPU_SPEC
+-#define OBSD_CPP_SPEC "%(cpp_cpu) %{posix:-D_POSIX_SOURCE} %{pthread:-D_POSIX_THREADS}"
++#define OBSD_CPP_SPEC "%(cpp_cpu) %{posix:-D_POSIX_SOURCE} %{pthread:-D_REENTRANT}"
+ #else
+-#define OBSD_CPP_SPEC "%{posix:-D_POSIX_SOURCE} %{pthread:-D_POSIX_THREADS}"
++#define OBSD_CPP_SPEC "%{posix:-D_POSIX_SOURCE} %{pthread:-D_REENTRANT}"
+ #endif
+ 
+ #undef LIB_SPEC
+@@ -274,5 +278,4 @@ do {									 \
+ 
+ /* Storage layout.  */
+ 
+-
+ #define HAVE_ENABLE_EXECUTE_STACK
+diff --git a/gcc/config/openbsd.opt b/gcc/config/openbsd.opt
+index 4f594057e..9ff9673f4 100644
+--- a/gcc/config/openbsd.opt
++++ b/gcc/config/openbsd.opt
+@@ -32,4 +32,7 @@ Driver
+ pthread
+ Driver
+ 
++rdynamic
++Driver
++
+ ; This comment is to ensure we retain the blank line above.
+diff --git a/gcc/config/pa/pa-openbsd.h b/gcc/config/pa/pa-openbsd.h
+index 6c04f8a71..a7bb242b4 100644
+--- a/gcc/config/pa/pa-openbsd.h
++++ b/gcc/config/pa/pa-openbsd.h
+@@ -138,14 +138,15 @@ along with GCC; see the file COPYING3.  If not see
+    %{shared:-shared} %{R*} \
+    %{static:-Bstatic} \
+    %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
+    %{assert*} \
+-   -dynamic-linker /usr/libexec/ld.so"
++   %{!static:-dynamic-linker /usr/libexec/ld.so}"
+ 
+ #undef STARTFILE_SPEC
+ #define STARTFILE_SPEC "\
+-	%{!shared: %{pg:gcrt0%O%s} %{!pg:%{p:gcrt0%O%s} %{!p:crt0%O%s}} \
+-	crtbegin%O%s} %{shared:crtbeginS%O%s}"
+-
++	%{!shared: %{pg:gcrt0%O%s} %{!pg:%{p:gcrt0%O%s} \
++	%{!p:%{!static:crt0%O%s} %{static:%{nopie:crt0%O%s} \
++	%{!nopie:rcrt0%O%s}}}} crtbegin%O%s} %{shared:crtbeginS%O%s}"
+ #undef ENDFILE_SPEC
+ #define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
+ 
+diff --git a/gcc/config/pa/pa.cc b/gcc/config/pa/pa.cc
+index 9542d3b7d..cce0dff00 100644
+--- a/gcc/config/pa/pa.cc
++++ b/gcc/config/pa/pa.cc
+@@ -39,6 +39,7 @@ along with GCC; see the file COPYING3.  If not see
+ #include "recog.h"
+ #include "diagnostic-core.h"
+ #include "insn-attr.h"
++#include "flags.h"
+ #include "alias.h"
+ #include "fold-const.h"
+ #include "stor-layout.h"
+@@ -4233,6 +4234,9 @@ pa_expand_prologue (void)
+   if (flag_stack_usage_info)
+     current_function_static_stack_size = actual_fsize;
+ 
++  if (warn_stack_larger_than && actual_fsize > stack_larger_than_size)
++    warning (OPT_Wstack_larger_than_, "stack usage is %lld bytes", actual_fsize);
++
+   /* Compute a few things we will use often.  */
+   tmpreg = gen_rtx_REG (word_mode, 1);
+ 
+diff --git a/gcc/config/pa/pa.h b/gcc/config/pa/pa.h
+index be845c836..b5d2d6a68 100644
+--- a/gcc/config/pa/pa.h
++++ b/gcc/config/pa/pa.h
+@@ -326,6 +326,9 @@ typedef struct GTY(()) machine_function
+    && TYPE_MODE (TREE_TYPE (TYPE)) == QImode	\
+    && (ALIGN) < BITS_PER_WORD ? BITS_PER_WORD : (ALIGN))
+ 
++/* Make local arrays of chars word-aligned for the same reasons.  */
++#define LOCAL_ALIGNMENT(TYPE, ALIGN) DATA_ALIGNMENT (TYPE, ALIGN)
++
+ /* Set this nonzero if move instructions will actually fail to work
+    when given unaligned data.  */
+ #define STRICT_ALIGNMENT 1
+diff --git a/gcc/config/riscv/openbsd.h b/gcc/config/riscv/openbsd.h
+new file mode 100644
+index 000000000..adbb38610
+--- /dev/null
++++ b/gcc/config/riscv/openbsd.h
+@@ -0,0 +1,121 @@
++/* Definitions of target machine for GNU compiler, OpenBSD/riscv64 ELF version.
++   Copyright (C) 2002 Free Software Foundation, Inc.
++
++This file is part of GNU CC.
++
++GNU CC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2, or (at your option)
++any later version.
++
++GNU CC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GNU CC; see the file COPYING.  If not, write to
++the Free Software Foundation, 59 Temple Place - Suite 330,
++Boston, MA 02111-1307, USA.  */
++
++/* This defaults us to little-endian.  */
++#ifndef TARGET_ENDIAN_DEFAULT
++#define TARGET_ENDIAN_DEFAULT 0
++#endif
++
++#undef MULTILIB_DEFAULTS
++/* The default STARTFILE_PREFIX_SPEC for riscv adds some multilib-aware
++   paths that we don't provide, instead of /usr/local/lib which is
++   needed to get at various files shipped by this port (libatomic.so,
++   libgfortran.spec, etc).
++*/
++#undef STARTFILE_PREFIX_SPEC
++
++/*
++ * Without linker relaxation in lld(1) we have to use the most generic
++ * code model.  XXX check lld 15.0 support for relaxation.
++ */
++#undef TARGET_DEFAULT_CMODEL
++#define TARGET_DEFAULT_CMODEL CM_MEDANY
++
++#define TARGET_OS_CPP_BUILTINS()	\
++  do					\
++    {					\
++      builtin_define ("__GXX_MERGED_TYPEINFO_NAMES=0"); \
++      OPENBSD_OS_CPP_BUILTINS_ELF();	\
++    }					\
++  while (0)
++
++#undef SUBTARGET_CPP_SPEC
++#define SUBTARGET_CPP_SPEC OBSD_CPP_SPEC
++
++#define LINK_SPEC \
++  "%{!shared:%{!nostdlib:%{!r:%{!e*:-e __start}}}} \
++   %{shared:-shared} %{R*} \
++   %{static:-Bstatic} \
++   %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
++   %{assert*} \
++   %{!static:-dynamic-linker /usr/libexec/ld.so} \
++   %{!nostdlib:-L/usr/lib}"
++
++#define OPENBSD_ENTRY_POINT "__start"
++
++/* Make GCC agree with <machine/_types.h>.  */
++
++#undef SIZE_TYPE
++#define SIZE_TYPE "long unsigned int"
++
++#undef PTRDIFF_TYPE
++#define PTRDIFF_TYPE "long int"
++
++#undef INTMAX_TYPE
++#define INTMAX_TYPE "long long int"
++
++#undef UINTMAX_TYPE
++#define UINTMAX_TYPE "long long unsigned int"
++
++#undef WCHAR_TYPE
++#define WCHAR_TYPE "int"
++
++#undef WCHAR_TYPE_SIZE
++#define WCHAR_TYPE_SIZE 32
++
++/* Provide a STARTFILE_SPEC appropriate for OpenBSD ELF.  Here we
++   provide support for the special GCC option -static.  On ELF
++   targets, we also add the crtbegin.o file, which provides part
++   of the support for getting C++ file-scope static objects
++   constructed before entering "main".  */
++
++#define OPENBSD_STARTFILE_SPEC	\
++  "%{!shared:			\
++     %{pg:gcrt0%O%s}		\
++     %{!pg:			\
++       %{p:gcrt0%O%s}		\
++       %{!p:%{!static:crt0%O%s} %{static:%{nopie:crt0%O%s} \
++        %{!nopie:rcrt0%O%s}}}}} \
++   %:if-exists(crti%O%s)	\
++   %{static:%:if-exists-else(crtbeginT%O%s crtbegin%O%s)} \
++   %{!static: \
++     %{!shared:crtbegin%O%s} %{shared:crtbeginS%O%s}}"
++
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC OPENBSD_STARTFILE_SPEC
++
++/* Provide an ENDFILE_SPEC appropriate for OpenBSD ELF.  Here we
++add crtend.o, which provides part of the support for getting
++C++ file-scope static objects deconstructed after exiting "main".  */
++
++#define OPENBSD_ENDFILE_SPEC     \
++  "%{!shared:crtend%O%s} %{shared:crtendS%O%s} \
++   %:if-exists(crtn%O%s)"
++
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC OPENBSD_ENDFILE_SPEC
++
++/* Remove -mcpu=native handling which is Linux specific */
++#undef DRIVER_SELF_SPECS
++#define DRIVER_SELF_SPECS ""
++
++/* dito */
++#undef EXTRA_SPEC_FUNCTIONS
+diff --git a/gcc/config/riscv/riscv.opt b/gcc/config/riscv/riscv.opt
+index 7515c8ea1..dccd77258 100644
+--- a/gcc/config/riscv/riscv.opt
++++ b/gcc/config/riscv/riscv.opt
+@@ -154,7 +154,7 @@ Target Mask(EXPLICIT_RELOCS)
+ Use %reloc() operators, rather than assembly macros, to load addresses.
+ 
+ mrelax
+-Target Var(riscv_mrelax) Init(1)
++Target Var(riscv_mrelax) Init(0)
+ Take advantage of linker relaxations to reduce the number of instructions
+ required to materialize symbol addresses.
+ 
+diff --git a/gcc/config/rs6000/driver-rs6000.cc b/gcc/config/rs6000/driver-rs6000.cc
+index 2ab675e6d..7f8c0c7bb 100644
+--- a/gcc/config/rs6000/driver-rs6000.cc
++++ b/gcc/config/rs6000/driver-rs6000.cc
+@@ -82,6 +82,8 @@ const char *host_detect_local_cpu (int argc, const char **argv);
+ 
+ #if GCC_VERSION >= 0
+ 
++#if defined(_AIX) || defined(__APPLE__) || defined(__FreeBSD__) || \
++	defined(__linux__)
+ /* Returns parameters that describe L1_ASSOC associative cache of size
+    L1_SIZEKB with lines of size L1_LINE, and L2_SIZEKB.  */
+ 
+@@ -100,6 +102,7 @@ describe_cache (unsigned l1_sizekb, unsigned l1_line,
+ 
+   return concat (l1size, " ", line, " ", l2size, " ", NULL);
+ }
++#endif
+ 
+ #ifdef __APPLE__
+ 
+diff --git a/gcc/config/rs6000/openbsd.h b/gcc/config/rs6000/openbsd.h
+new file mode 100644
+index 000000000..07cff1233
+--- /dev/null
++++ b/gcc/config/rs6000/openbsd.h
+@@ -0,0 +1,132 @@
++/* Configuration file for an rs6000 OpenBSD target.
++   Copyright (C) 1999 Free Software Foundation, Inc.
++
++This file is part of GNU CC.
++
++GNU CC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2, or (at your option)
++any later version.
++
++GNU CC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GNU CC; see the file COPYING.  If not, write to
++the Free Software Foundation, 59 Temple Place - Suite 330,
++Boston, MA 02111-1307, USA.  */
++
++/* XXX need to check ASM_WEAKEN_LABEL/ASM_GLOBALIZE_LABEL. */
++
++/* Run-time target specifications. */
++#undef TARGET_OS_CPP_BUILTINS	/* FIXME: sysv4.h should not define this! */
++#define TARGET_OS_CPP_BUILTINS()		\
++  do						\
++    {						\
++	OPENBSD_OS_CPP_BUILTINS_ELF();		\
++	builtin_define ("__PPC");		\
++	builtin_define ("__PPC__");		\
++	builtin_define ("__powerpc");		\
++	builtin_define ("__powerpc__");		\
++	builtin_assert ("cpu=powerpc");		\
++	builtin_assert ("machine=powerpc");	\
++    }						\
++  while (0)
++
++/* Override the default from rs6000.h to avoid conflicts with macros
++   defined in OpenBSD header files.  */
++
++#undef RS6000_CPU_CPP_ENDIAN_BUILTINS
++#define RS6000_CPU_CPP_ENDIAN_BUILTINS()	\
++  do						\
++    {						\
++      if (BYTES_BIG_ENDIAN)			\
++	{					\
++	  builtin_define ("__BIG_ENDIAN__");	\
++	  builtin_assert ("machine=bigendian");	\
++	}					\
++      else					\
++	{					\
++	  builtin_define ("__LITTLE_ENDIAN__");	\
++	  builtin_assert ("machine=littleendian"); \
++	}					\
++    }						\
++  while (0)
++
++#undef	CPP_OS_DEFAULT_SPEC
++#define CPP_OS_DEFAULT_SPEC "%(cpp_os_openbsd)"
++
++#undef LINK_SPEC
++#define LINK_SPEC \
++  "%{!shared:%{!nostdlib:%{!r:%{!e*:-e __start}}}} \
++   %{shared:-shared} %{R*} \
++   %{static:-Bstatic} \
++   %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
++   %{assert*} \
++   %{!static:-dynamic-linker /usr/libexec/ld.so} \
++   %{!nostdlib:-L/usr/lib}"
++
++#undef	LIB_DEFAULT_SPEC
++#define LIB_DEFAULT_SPEC "%(lib_openbsd)"
++
++#undef	STARTFILE_DEFAULT_SPEC
++#define STARTFILE_DEFAULT_SPEC "%(startfile_openbsd)"
++
++#undef CRTSAVRES_DEFAULT_SPEC
++#define CRTSAVRES_DEFAULT_SPEC ""
++
++#undef	ENDFILE_DEFAULT_SPEC
++#define ENDFILE_DEFAULT_SPEC "%(endfile_openbsd)"
++
++#undef	LINK_START_DEFAULT_SPEC
++#define LINK_START_DEFAULT_SPEC "%(link_start_openbsd)"
++
++#undef	LINK_OS_DEFAULT_SPEC
++#define LINK_OS_DEFAULT_SPEC "%(link_os_openbsd)"
++
++/* Default ABI to use */
++#undef RS6000_ABI_NAME 
++#define RS6000_ABI_NAME "openbsd"
++
++/* Define this macro as a C expression for the initializer of an
++   array of string to tell the driver program which options are
++   defaults for this target and thus do not need to be handled
++   specially when using `MULTILIB_OPTIONS'.
++
++   Do not define this macro if `MULTILIB_OPTIONS' is not defined in
++   the target makefile fragment or if none of the options listed in
++   `MULTILIB_OPTIONS' are set by default.  *Note Target Fragment::.  */
++
++#undef	MULTILIB_DEFAULTS
++#define	MULTILIB_DEFAULTS { "mbig", "mcall-openbsd" }
++
++/* collect2 support (Macros for initialization). */
++
++
++/* Don't tell collect2 we use COFF as we don't have (yet ?) a dynamic ld
++   library with the proper functions to handle this -> collect2 will
++   default to using nm. */
++#undef OBJECT_FORMAT_COFF
++
++/* Some code gets optimized incorrectly by move_movables() in loop.c */
++#define	BROKEN_MOVE_MOVABLES_P
++
++/* This must agree with <machine/_types.h> */
++#undef SIZE_TYPE
++#define SIZE_TYPE "long unsigned int"
++
++#undef PTRDIFF_TYPE
++#define PTRDIFF_TYPE "long int"
++
++#undef WCHAR_TYPE
++#define WCHAR_TYPE	"int"
++
++#undef WCHAR_TYPE_SIZE
++#define WCHAR_TYPE_SIZE	32
++
++#undef TRAMPOLINE_SIZE
++#define TRAMPOLINE_SIZE 40
++
+diff --git a/gcc/config/rs6000/openbsd1.h b/gcc/config/rs6000/openbsd1.h
+new file mode 100644
+index 000000000..bc6ead081
+--- /dev/null
++++ b/gcc/config/rs6000/openbsd1.h
+@@ -0,0 +1,24 @@
++/* Configuration file for an rs6000 OpenBSD target.
++   Copyright (C) 1999 Free Software Foundation, Inc.
++
++This file is part of GNU CC.
++
++GNU CC is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2, or (at your option)
++any later version.
++
++GNU CC is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GNU CC; see the file COPYING.  If not, write to
++the Free Software Foundation, 59 Temple Place - Suite 330,
++Boston, MA 02111-1307, USA.  */
++
++#define OBSD_HAS_CORRECT_SPECS
++#define OBSD_HAS_DECLARE_FUNCTION_NAME
++#define OBSD_HAS_DECLARE_FUNCTION_SIZE
++#define OBSD_HAS_DECLARE_OBJECT
+diff --git a/gcc/config/rs6000/openbsd64.h b/gcc/config/rs6000/openbsd64.h
+new file mode 100644
+index 000000000..50dacc9cd
+--- /dev/null
++++ b/gcc/config/rs6000/openbsd64.h
+@@ -0,0 +1,411 @@
++/* Definitions for 64-bit PowerPC running OpenBSD using the ELF format
++   Copyright (C) 2012-2021 Free Software Foundation, Inc.
++
++   This file is part of GCC.
++
++   GCC is free software; you can redistribute it and/or modify it
++   under the terms of the GNU General Public License as published
++   by the Free Software Foundation; either version 3, or (at your
++   option) any later version.
++
++   GCC is distributed in the hope that it will be useful, but WITHOUT
++   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
++   License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with GCC; see the file COPYING3.  If not see
++   <http://www.gnu.org/licenses/>.  */
++
++/* Override the defaults, which exist to force the proper definition.  */
++
++#ifdef IN_LIBGCC2
++#undef TARGET_64BIT
++#ifdef __powerpc64__
++#define TARGET_64BIT 1
++#else
++#define TARGET_64BIT 0
++#endif
++#endif
++
++#undef	TARGET_AIX
++#define	TARGET_AIX TARGET_64BIT
++
++#ifdef HAVE_LD_NO_DOT_SYMS
++/* New ABI uses a local sym for the function entry point.  */
++extern int dot_symbols;
++#undef DOT_SYMBOLS
++#define DOT_SYMBOLS dot_symbols
++#endif
++
++#define TARGET_USES_LINUX64_OPT 1
++#ifdef HAVE_LD_LARGE_TOC
++#undef TARGET_CMODEL
++#define TARGET_CMODEL rs6000_current_cmodel
++#define SET_CMODEL(opt) rs6000_current_cmodel = opt
++#else
++#define SET_CMODEL(opt) do {} while (0)
++#endif
++
++#undef  PROCESSOR_DEFAULT
++#define PROCESSOR_DEFAULT PROCESSOR_POWER7
++#undef  PROCESSOR_DEFAULT64
++#define PROCESSOR_DEFAULT64 PROCESSOR_POWER8
++
++/* We don't need to generate entries in .fixup, except when
++   -mrelocatable or -mrelocatable-lib is given.  */
++#undef RELOCATABLE_NEEDS_FIXUP
++#define RELOCATABLE_NEEDS_FIXUP \
++  (rs6000_isa_flags & rs6000_isa_flags_explicit & OPTION_MASK_RELOCATABLE)
++
++#undef  RS6000_ABI_NAME
++#define RS6000_ABI_NAME "openbsd"
++
++#define INVALID_64BIT "%<-m%s%> not supported in this configuration"
++#define INVALID_32BIT INVALID_64BIT
++
++/* OpenBSD/powerpc64 uses the ELF v2 ABI by default.  */
++#define ELFv2_ABI_CHECK (rs6000_elf_abi != 1)
++
++#undef  SUBSUBTARGET_OVERRIDE_OPTIONS
++#define SUBSUBTARGET_OVERRIDE_OPTIONS				\
++  do								\
++    {								\
++      if (!global_options_set.x_rs6000_alignment_flags)		\
++	rs6000_alignment_flags = MASK_ALIGN_NATURAL;		\
++      if (TARGET_64BIT)						\
++	{							\
++	  if (DEFAULT_ABI != ABI_AIX)				\
++	    {							\
++	      rs6000_current_abi = ABI_AIX;			\
++	      error (INVALID_64BIT, "call");			\
++	    }							\
++	  dot_symbols = !strcmp (rs6000_abi_name, "aixdesc");	\
++	  if (rs6000_isa_flags & OPTION_MASK_RELOCATABLE)	\
++	    {							\
++	      rs6000_isa_flags &= ~OPTION_MASK_RELOCATABLE;	\
++	      error (INVALID_64BIT, "relocatable");		\
++	    }							\
++	  if (ELFv2_ABI_CHECK)					\
++	    {							\
++	      rs6000_current_abi = ABI_ELFv2;			\
++	      if (dot_symbols)					\
++		error ("-mcall-aixdesc incompatible with -mabi=elfv2"); \
++	    }							\
++	  if (rs6000_isa_flags & OPTION_MASK_EABI)		\
++	    {							\
++	      rs6000_isa_flags &= ~OPTION_MASK_EABI;		\
++	      error (INVALID_64BIT, "eabi");			\
++	    }							\
++	  if (TARGET_PROTOTYPE)					\
++	    {							\
++	      target_prototype = 0;				\
++	      error (INVALID_64BIT, "prototype");		\
++	    }							\
++	  if ((rs6000_isa_flags & OPTION_MASK_POWERPC64) == 0)	\
++	    {							\
++	      rs6000_isa_flags |= OPTION_MASK_POWERPC64;	\
++	      error ("-m64 requires a PowerPC64 cpu");		\
++	    }							\
++	   if ((rs6000_isa_flags_explicit			\
++		& OPTION_MASK_MINIMAL_TOC) != 0)		\
++	    {							\
++	      if (global_options_set.x_rs6000_current_cmodel	\
++		  && rs6000_current_cmodel != CMODEL_SMALL)	\
++		error ("-mcmodel incompatible with other toc options"); \
++	      SET_CMODEL (CMODEL_SMALL);			\
++	    }							\
++	  else							\
++	    {							\
++	      if (!global_options_set.x_rs6000_current_cmodel)	\
++		SET_CMODEL (CMODEL_MEDIUM);			\
++	      if (rs6000_current_cmodel != CMODEL_SMALL)	\
++		{						\
++		  TARGET_NO_FP_IN_TOC = 0;			\
++		  TARGET_NO_SUM_IN_TOC = 0;			\
++		}						\
++	    }							\
++	}							\
++    }								\
++  while (0)
++
++#undef	ASM_DEFAULT_SPEC
++#undef	ASM_SPEC
++
++#define	ASM_DEFAULT_SPEC "-mppc%{!m32:64}"
++#define	ASM_SPEC	 "%{m32:%(asm_spec32)}%{!m32:%(asm_spec64)} %(asm_spec_common)"
++
++#define ASM_SPEC32 "-a32 \
++%{mrelocatable} %{mrelocatable-lib} %{" FPIE_OR_FPIC_SPEC ":-K PIC} \
++%{memb} %{!memb: %{msdata=eabi: -memb}} \
++%{!mlittle: %{!mlittle-endian: %{!mbig: %{!mbig-endian: \
++    %{mcall-freebsd: -mbig} \
++    %{mcall-i960-old: -mlittle} \
++    %{mcall-linux: -mbig} \
++    %{mcall-gnu: -mbig} \
++    %{mcall-netbsd: -mbig} \
++}}}}"
++
++#define ASM_SPEC64 "-a64"
++
++#define ASM_SPEC_COMMON "%(asm_cpu) \
++%{,assembler|,assembler-with-cpp: %{mregnames} %{mno-regnames}} \
++%{mlittle} %{mlittle-endian} %{mbig} %{mbig-endian}"
++
++#undef	SUBSUBTARGET_EXTRA_SPECS
++#define SUBSUBTARGET_EXTRA_SPECS					\
++  { "asm_spec_common",		ASM_SPEC_COMMON },			\
++  { "asm_spec32",		ASM_SPEC32 },				\
++  { "asm_spec64",		ASM_SPEC64 },
++
++#undef	MULTILIB_DEFAULTS
++#define MULTILIB_DEFAULTS { "m64" }
++
++/* OpenBSD/powerpc64 increases natural record alignment to doubleword if
++   the first field is an FP double, only if in power alignment mode.  */
++#undef  ROUND_TYPE_ALIGN
++#define ROUND_TYPE_ALIGN(STRUCT, COMPUTED, SPECIFIED)			\
++  ((TARGET_64BIT							\
++    && (TREE_CODE (STRUCT) == RECORD_TYPE				\
++	|| TREE_CODE (STRUCT) == UNION_TYPE				\
++	|| TREE_CODE (STRUCT) == QUAL_UNION_TYPE)			\
++    && TARGET_ALIGN_NATURAL == 0)					\
++   ? rs6000_special_round_type_align (STRUCT, COMPUTED, SPECIFIED)	\
++   : MAX ((COMPUTED), (SPECIFIED)))
++
++/* Use the default for compiling target libs.  */
++#ifdef IN_TARGET_LIBS
++#undef TARGET_ALIGN_NATURAL
++#define TARGET_ALIGN_NATURAL 1
++#endif
++
++/* Indicate that jump tables go in the text section.  */
++#undef  JUMP_TABLES_IN_TEXT_SECTION
++#define JUMP_TABLES_IN_TEXT_SECTION TARGET_64BIT
++
++/* The linux ppc64 ABI isn't explicit on whether aggregates smaller
++   than a doubleword should be padded upward or downward.  You could
++   reasonably assume that they follow the normal rules for structure
++   layout treating the parameter area as any other block of memory,
++   then map the reg param area to registers.  i.e. pad upward.
++   Setting both of the following defines results in this behavior.
++   Setting just the first one will result in aggregates that fit in a
++   doubleword being padded downward, and others being padded upward.
++   Not a bad idea as this results in struct { int x; } being passed
++   the same way as an int.  */
++#define AGGREGATE_PADDING_FIXED TARGET_64BIT
++#define AGGREGATES_PAD_UPWARD_ALWAYS 0
++
++/* Specify padding for the last element of a block move between
++   registers and memory.  FIRST is nonzero if this is the only
++   element.  */
++#define BLOCK_REG_PADDING(MODE, TYPE, FIRST) \
++  (!(FIRST) ? PAD_UPWARD : targetm.calls.function_arg_padding (MODE, TYPE))
++
++/* OpenBSD doesn't support saving and restoring 64-bit regs with a 32-bit
++   kernel.  */
++#define OS_MISSING_POWERPC64 !TARGET_64BIT
++
++#undef  TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()			\
++  do							\
++    {							\
++      OPENBSD_OS_CPP_BUILTINS_ELF();			\
++      builtin_define ("__PPC__");			\
++      builtin_define ("__ppc__");			\
++      builtin_define ("__powerpc__");			\
++      if (TARGET_64BIT)					\
++	{						\
++	  builtin_define ("__arch64__");		\
++	  builtin_define ("__LP64__");			\
++	  builtin_define ("__PPC64__");			\
++	  builtin_define ("__powerpc64__");		\
++	  builtin_assert ("cpu=powerpc64");		\
++	  builtin_assert ("machine=powerpc64");		\
++	}						\
++      else						\
++	{						\
++	  builtin_define_std ("PPC");			\
++	  builtin_define_std ("powerpc");		\
++	  builtin_assert ("cpu=powerpc");		\
++	  builtin_assert ("machine=powerpc");		\
++	  TARGET_OS_SYSV_CPP_BUILTINS ();		\
++	}						\
++    }							\
++  while (0)
++
++#undef	CPP_OS_DEFAULT_SPEC
++#define CPP_OS_DEFAULT_SPEC "%(cpp_os_openbsd)"
++
++#undef LINK_SPEC
++#define LINK_SPEC \
++  "%{!shared:%{!nostdlib:%{!r:%{!e*:-e __start}}}} \
++   %{shared:-shared} %{R*} \
++   %{static:-Bstatic} \
++   %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
++   %{assert*} \
++   %{!static:-dynamic-linker /usr/libexec/ld.so} \
++   %{!nostdlib:-L/usr/lib}"
++
++#undef	LIB_DEFAULT_SPEC
++#define LIB_DEFAULT_SPEC "%(lib_openbsd)"
++
++#undef	STARTFILE_DEFAULT_SPEC
++#define STARTFILE_DEFAULT_SPEC "%(startfile_openbsd)"
++
++#undef	ENDFILE_DEFAULT_SPEC
++#define ENDFILE_DEFAULT_SPEC "%(endfile_openbsd)"
++
++#undef	LINK_START_DEFAULT_SPEC
++#define LINK_START_DEFAULT_SPEC "%(link_start_openbsd)"
++
++#undef	LINK_OS_DEFAULT_SPEC
++#define LINK_OS_DEFAULT_SPEC "%(link_os_openbsd)"
++
++/************************[  Target stuff  ]***********************************/
++
++/* Define the actual types of some ANSI-mandated types.  
++   Needs to agree with <machine/ansi.h>.  GCC defaults come from c-decl.c,
++   c-common.c, and config/<arch>/<arch>.h.  */
++
++
++#undef  SIZE_TYPE
++#define SIZE_TYPE (TARGET_64BIT ? "long unsigned int" : "unsigned int")
++
++#undef  PTRDIFF_TYPE
++#define PTRDIFF_TYPE	(TARGET_64BIT ? "long int" : "int")
++
++/* This must agree with <machine/_types.h> */
++#undef SIZE_TYPE
++#define SIZE_TYPE "long unsigned int"
++
++#undef PTRDIFF_TYPE
++#define PTRDIFF_TYPE "long int"
++
++#undef WCHAR_TYPE
++#define WCHAR_TYPE	"int"
++
++#undef WCHAR_TYPE_SIZE
++#define WCHAR_TYPE_SIZE	32
++
++/* Override rs6000.h definition.  */
++#undef  ASM_APP_ON
++#define ASM_APP_ON "#APP\n"
++
++/* Override rs6000.h definition.  */
++#undef  ASM_APP_OFF
++#define ASM_APP_OFF "#NO_APP\n"
++
++/* Function profiling bits */
++#undef  RS6000_MCOUNT
++#define RS6000_MCOUNT "_mcount"
++
++#define PROFILE_HOOK(LABEL) \
++  do { if (TARGET_64BIT) output_profile_hook (LABEL); } while (0)
++
++/* _init and _fini functions are built from bits spread across many
++   object files, each potentially with a different TOC pointer.  For
++   that reason, place a nop after the call so that the linker can
++   restore the TOC pointer if a TOC adjusting call stub is needed.  */
++#ifdef __powerpc64__
++#define CRT_CALL_STATIC_FUNCTION(SECTION_OP, FUNC)	\
++  asm (SECTION_OP "\n"					\
++"	bl " #FUNC "\n"					\
++"	nop\n"						\
++"	.previous");
++#endif
++
++/* FP save and restore routines.  */
++#undef  SAVE_FP_PREFIX
++#define SAVE_FP_PREFIX (TARGET_64BIT ? "._savef" : "_savefpr_")
++#undef  SAVE_FP_SUFFIX
++#define SAVE_FP_SUFFIX ""
++#undef  RESTORE_FP_PREFIX
++#define RESTORE_FP_PREFIX (TARGET_64BIT ? "._restf" : "_restfpr_")
++#undef  RESTORE_FP_SUFFIX
++#define RESTORE_FP_SUFFIX ""
++
++/* Select a format to encode pointers in exception handling data.  CODE
++   is 0 for data, 1 for code labels, 2 for function pointers.  GLOBAL is
++   true if the symbol may be affected by dynamic relocations.  */
++#undef	ASM_PREFERRED_EH_DATA_FORMAT
++#define	ASM_PREFERRED_EH_DATA_FORMAT(CODE, GLOBAL) \
++  (TARGET_64BIT || flag_pic						\
++   ? (((GLOBAL) ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel		\
++      | (TARGET_64BIT ? DW_EH_PE_udata8 : DW_EH_PE_sdata4))		\
++   : DW_EH_PE_absptr)
++
++/* Static stack checking is supported by means of probes.  */
++#define STACK_CHECK_STATIC_BUILTIN 1
++
++/* The default value isn't sufficient in 64-bit mode.  */
++#define STACK_CHECK_PROTECT (TARGET_64BIT ? 16 * 1024 : 12 * 1024)
++
++/* Use standard DWARF numbering for DWARF debugging information.  */
++#define RS6000_USE_DWARF_NUMBERING
++
++/* PowerPC64 Linux word-aligns FP doubles when -malign-power is given.  */
++#undef  ADJUST_FIELD_ALIGN
++#define ADJUST_FIELD_ALIGN(FIELD, TYPE, COMPUTED) \
++   ((TARGET_64BIT                                                      \
++      && TARGET_ALIGN_NATURAL == 0                                      \
++      && TYPE_MODE (strip_array_types (TYPE)) == DFmode)   		\
++   ? MIN ((COMPUTED), 32)                                               \
++   : (COMPUTED))
++
++#undef  TOC_SECTION_ASM_OP
++#define TOC_SECTION_ASM_OP \
++  (TARGET_64BIT                                         \
++   ? "\t.section\t\".toc\",\"aw\""                      \
++   : "\t.section\t\".got\",\"aw\"")
++
++#undef  MINIMAL_TOC_SECTION_ASM_OP
++#define MINIMAL_TOC_SECTION_ASM_OP \
++  (TARGET_64BIT                                         \
++   ? "\t.section\t\".toc1\",\"aw\""                     \
++   : (flag_pic						\
++      ? "\t.section\t\".got2\",\"aw\""                  \
++      : "\t.section\t\".got1\",\"aw\""))
++
++/* This is how to declare the size of a function.  */
++#undef  ASM_DECLARE_FUNCTION_SIZE
++#define ASM_DECLARE_FUNCTION_SIZE(FILE, FNAME, DECL)                    \
++  do                                                                    \
++    {                                                                   \
++      if (!flag_inhibit_size_directive)                                 \
++        {                                                               \
++          fputs ("\t.size\t", (FILE));                                  \
++          if (TARGET_64BIT && DOT_SYMBOLS)                              \
++            putc ('.', (FILE));                                         \
++          assemble_name ((FILE), (FNAME));                              \
++          fputs (",.-", (FILE));                                        \
++          rs6000_output_function_entry (FILE, FNAME);                   \
++          putc ('\n', (FILE));                                          \
++        }                                                               \
++    }                                                                   \
++  while (0)
++
++#undef  ASM_OUTPUT_SPECIAL_POOL_ENTRY_P
++#define ASM_OUTPUT_SPECIAL_POOL_ENTRY_P(X, MODE)                        \
++  (TARGET_TOC                                                           \
++   && (GET_CODE (X) == SYMBOL_REF                                       \
++       || (GET_CODE (X) == CONST && GET_CODE (XEXP (X, 0)) == PLUS      \
++           && GET_CODE (XEXP (XEXP (X, 0), 0)) == SYMBOL_REF)           \
++       || GET_CODE (X) == LABEL_REF                                     \
++       || (GET_CODE (X) == CONST_INT                                    \
++           && GET_MODE_BITSIZE (MODE) <= GET_MODE_BITSIZE (Pmode))      \
++       || (GET_CODE (X) == CONST_DOUBLE                                 \
++           && ((TARGET_64BIT                                            \
++                && (TARGET_MINIMAL_TOC                                  \
++                    || (SCALAR_FLOAT_MODE_P (GET_MODE (X))              \
++                        && ! TARGET_NO_FP_IN_TOC)))                     \
++               || (!TARGET_64BIT                                        \
++                   && !TARGET_NO_FP_IN_TOC                              \
++                   && SCALAR_FLOAT_MODE_P (GET_MODE (X))                \
++                   && BITS_PER_WORD == HOST_BITS_PER_INT)))))
++
++/* Use --as-needed -lgcc_s for eh support.  */
++#ifdef HAVE_LD_AS_NEEDED
++#define USE_LD_AS_NEEDED 1
++#endif
+diff --git a/gcc/config/rs6000/sysv4.h b/gcc/config/rs6000/sysv4.h
+index afb5c6ad8..c6ffccfd4 100644
+--- a/gcc/config/rs6000/sysv4.h
++++ b/gcc/config/rs6000/sysv4.h
+@@ -92,7 +92,8 @@ do {									\
+   else if (!strcmp (rs6000_abi_name, "aixdesc"))			\
+     rs6000_current_abi = ABI_AIX;					\
+   else if (!strcmp (rs6000_abi_name, "freebsd")				\
+-	   || !strcmp (rs6000_abi_name, "linux"))			\
++	   || !strcmp (rs6000_abi_name, "linux")			\
++	   || !strcmp (rs6000_abi_name, "openbsd"))			\
+     {									\
+       if (TARGET_64BIT)							\
+ 	rs6000_current_abi = ABI_AIX;					\
+@@ -101,8 +102,6 @@ do {									\
+     }									\
+   else if (!strcmp (rs6000_abi_name, "netbsd"))				\
+     rs6000_current_abi = ABI_V4;					\
+-  else if (!strcmp (rs6000_abi_name, "openbsd"))			\
+-    rs6000_current_abi = ABI_V4;					\
+   else if (!strcmp (rs6000_abi_name, "i960-old"))			\
+     {									\
+       rs6000_current_abi = ABI_V4;					\
+@@ -411,6 +410,7 @@ do {									\
+   asm_fprintf (FILE, "%L%s", PREFIX)
+ 
+ /* Globalizing directive for a label.  */
++#undef GLOBAL_ASM_OP
+ #define GLOBAL_ASM_OP "\t.globl "
+ 
+ /* This says how to output assembler code to declare an
+@@ -812,13 +812,14 @@ ncrtn.o%s"
+ 
+ /* OpenBSD support.  */
+ #ifndef	LIB_OPENBSD_SPEC
+-#define LIB_OPENBSD_SPEC "%{!shared:%{pthread:-lpthread%{p:_p}%{!p:%{pg:_p}}}} %{!shared:-lc%{p:_p}%{!p:%{pg:_p}}}"
++#define LIB_OPENBSD_SPEC OBSD_LIB_SPEC
+ #endif
+ 
+ #ifndef	STARTFILE_OPENBSD_SPEC
+ #define	STARTFILE_OPENBSD_SPEC "\
+-%{!shared: %{pg:gcrt0.o%s} %{!pg:%{p:gcrt0.o%s} %{!p:crt0.o%s}}} \
+-%{!shared:crtbegin.o%s} %{shared:crtbeginS.o%s}"
++%{!shared: %{pg:gcrt0%O%s} %{!pg:%{p:gcrt0%O%s} \
++%{!p:%{!static:crt0%O%s} %{static:%{nopie:crt0%O%s} %{!nopie:rcrt0%O%s}}}} \
++crtbegin%O%s} %{shared:crtbeginS%O%s}"
+ #endif
+ 
+ #ifndef	ENDFILE_OPENBSD_SPEC
+@@ -835,7 +836,7 @@ ncrtn.o%s"
+ #endif
+ 
+ #ifndef CPP_OS_OPENBSD_SPEC
+-#define CPP_OS_OPENBSD_SPEC "%{posix:-D_POSIX_SOURCE} %{pthread:-D_POSIX_THREADS}"
++#define CPP_OS_OPENBSD_SPEC OBSD_CPP_SPEC
+ #endif
+ 
+ /* Define any extra SPECS that the compiler needs to generate.  */
+diff --git a/gcc/config/rs6000/t-openbsd b/gcc/config/rs6000/t-openbsd
+new file mode 100644
+index 000000000..d0d43ba45
+--- /dev/null
++++ b/gcc/config/rs6000/t-openbsd
+@@ -0,0 +1,48 @@
++# include t-rs6000 too
++# this is taken from t-ppccomm
++# but crt* removed.
++
++
++LIB2FUNCS_EXTRA = tramp.S
++
++# This one can't end up in shared libgcc
++LIB2FUNCS_STATIC_EXTRA = eabi.S
++
++# We want fine grained libraries, so use the new code to build the
++# floating point emulation libraries.
++FPBIT = fp-bit.c
++DPBIT = dp-bit.c
++
++
++dp-bit.c: $(srcdir)/config/fp-bit.c
++	cat $(srcdir)/config/fp-bit.c > dp-bit.c
++
++fp-bit.c: $(srcdir)/config/fp-bit.c
++	echo '#define FLOAT' > fp-bit.c
++	cat $(srcdir)/config/fp-bit.c >> fp-bit.c
++
++eabi.S: $(srcdir)/config/rs6000/eabi.asm
++	cat $(srcdir)/config/rs6000/eabi.asm > eabi.S
++
++tramp.S: $(srcdir)/config/rs6000/tramp.asm
++	cat $(srcdir)/config/rs6000/tramp.asm > tramp.S
++
++# Switch synonyms
++MULTILIB_MATCHES_FLOAT	= msoft-float=mcpu?401 \
++			  msoft-float=mcpu?403 \
++			  msoft-float=mcpu?ec603e \
++			  msoft-float=mcpu?801 \
++			  msoft-float=mcpu?821 \
++			  msoft-float=mcpu?823 \
++			  msoft-float=mcpu?860
++MULTILIB_MATCHES_ENDIAN	= mlittle=mlittle-endian mbig=mbig-endian
++MULTILIB_MATCHES_SYSV	= mcall-sysv=mcall-sysv-eabi mcall-sysv=mcall-sysv-noeabi mcall-sysv=mcall-linux mcall-sysv=mcall-netbsd
++
++LIBGCC = stmp-multilib
++INSTALL_LIBGCC = install-multilib
++
++# It is important that crtbegin.o, etc., aren't surprised by stuff in .sdata.
++CRTSTUFF_T_CFLAGS = -msdata=none
++# Make sure crt*.o are built with -fPIC even if configured with 
++# --enable-shared --disable-multilib
++CRTSTUFF_T_CFLAGS_S = -fPIC -msdata=none
+diff --git a/gcc/config/sparc/openbsd64.h b/gcc/config/sparc/openbsd64.h
+index b18918b8b..0162973f0 100644
+--- a/gcc/config/sparc/openbsd64.h
++++ b/gcc/config/sparc/openbsd64.h
+@@ -20,7 +20,7 @@ along with GCC; see the file COPYING3.  If not see
+ /* XXX - do we really want HARD_QUAD? */
+ #undef TARGET_DEFAULT
+ #define TARGET_DEFAULT \
+-(MASK_V9 + MASK_PTR64 + MASK_64BIT + MASK_HARD_QUAD \
++(MASK_V9 + MASK_PTR64 + MASK_64BIT + /* MASK_HARD_QUAD */ \
+  + MASK_APP_REGS + MASK_FPU + MASK_STACK_BIAS + MASK_LONG_DOUBLE_128)
+ 
+ #undef SPARC_DEFAULT_CMODEL
+@@ -30,10 +30,7 @@ along with GCC; see the file COPYING3.  If not see
+ #define TARGET_OS_CPP_BUILTINS()		\
+   do						\
+     {						\
+-	builtin_define ("__unix__");		\
+-	builtin_define ("__OpenBSD__");		\
+-	builtin_assert ("system=unix");		\
+-	builtin_assert ("system=OpenBSD");	\
++	OPENBSD_OS_CPP_BUILTINS();		\
+ 	builtin_define ("__sparc64__");		\
+ 	builtin_define ("__sparcv9__");		\
+ 	builtin_define ("__sparc_v9__");	\
+@@ -42,10 +39,17 @@ along with GCC; see the file COPYING3.  If not see
+   while (0)
+ 
+ #undef ASM_SPEC
++#ifdef PIE_DEFAULT
++#define ASM_SPEC "\
++-s %{fpic|fPIC:-K PIC} %{!fno-pie: %{!p: %{!pg: -K PIC}}} \
++%(asm_cpu) %(asm_arch) \
++"
++#else
+ #define ASM_SPEC "\
+ -s %{" FPIE_OR_FPIC_SPEC ":-K PIC} \
+ %(asm_cpu) %(asm_arch) \
+ "
++#endif
+ 
+ /* Layout of source language data types.  */
+ #undef WCHAR_TYPE
+@@ -53,6 +57,15 @@ along with GCC; see the file COPYING3.  If not see
+ 
+ #undef WCHAR_TYPE_SIZE
+ #define WCHAR_TYPE_SIZE 32
++ 
++#undef WINT_TYPE
++#define WINT_TYPE "int"
++
++#undef INTMAX_TYPE
++#define INTMAX_TYPE "long long int"
++
++#undef UINTMAX_TYPE
++#define UINTMAX_TYPE "long long unsigned int"
+ 
+ #undef SPARC_LONG_DOUBLE_TYPE_SIZE
+ #define SPARC_LONG_DOUBLE_TYPE_SIZE 128
+@@ -63,13 +76,15 @@ along with GCC; see the file COPYING3.  If not see
+    %{shared:-shared} %{R*} \
+    %{static:-Bstatic} \
+    %{!static:-Bdynamic} \
++   %{rdynamic:-export-dynamic} \
+    %{assert*} \
+-   -dynamic-linker /usr/libexec/ld.so"
++   %{!static:-dynamic-linker /usr/libexec/ld.so}"
+ 
+ /* As an elf system, we need crtbegin/crtend stuff.  */
+ #undef STARTFILE_SPEC
+ #define STARTFILE_SPEC "\
+-        %{!shared: %{pg:gcrt0%O%s} %{!pg:%{p:gcrt0%O%s} %{!p:crt0%O%s}} \
+-        crtbegin%O%s} %{shared:crtbeginS%O%s}"
++	%{!shared: %{pg:gcrt0%O%s} %{!pg:%{p:gcrt0%O%s} \
++	%{!p:%{!static:crt0%O%s} %{static:%{nopie:crt0%O%s} \
++	%{!nopie:rcrt0%O%s}}}} crtbegin%O%s} %{shared:crtbeginS%O%s}"
+ #undef ENDFILE_SPEC
+ #define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
+diff --git a/gcc/config/sparc/sparc.cc b/gcc/config/sparc/sparc.cc
+index 2196a0c44..0ae676a95 100644
+--- a/gcc/config/sparc/sparc.cc
++++ b/gcc/config/sparc/sparc.cc
+@@ -48,6 +48,7 @@ along with GCC; see the file COPYING3.  If not see
+ #include "varasm.h"
+ #include "output.h"
+ #include "insn-attr.h"
++#include "flags.h"
+ #include "explow.h"
+ #include "expr.h"
+ #include "debug.h"
+@@ -6061,7 +6062,7 @@ sparc_expand_prologue (void)
+       RTX_FRAME_RELATED_P (insn) = 1;
+ 
+       /* Ensure no memory access is done before the frame is established.  */
+-      emit_insn (gen_frame_blockage ());
++      /* emit_insn (gen_frame_blockage ()); */
+     }
+   else
+     {
+@@ -6104,6 +6105,9 @@ sparc_expand_prologue (void)
+ 					   - sparc_apparent_frame_size,
+ 					 SORR_SAVE);
+ 
++  if (warn_stack_larger_than && size > stack_larger_than_size)
++    warning (OPT_Wstack_larger_than_, "stack usage is %lld bytes", size);
++
+   /* Advertise that the data calculated just above are now valid.  */
+   sparc_prologue_data_valid_p = true;
+ }
+diff --git a/gcc/config/t-openbsd b/gcc/config/t-openbsd
+index 3b625d62b..3662a26c8 100644
+--- a/gcc/config/t-openbsd
++++ b/gcc/config/t-openbsd
+@@ -1,5 +1,9 @@
+ # We don't need GCC's own include files.
+-USER_H = $(EXTRA_HEADERS)
++USER_H = $(srcdir)/ginclude/stdfix.h \
++	 $(srcdir)/ginclude/stdnoreturn.h \
++	 $(srcdir)/ginclude/stdalign.h \
++	 $(srcdir)/ginclude/stdatomic.h \
++	 $(EXTRA_HEADERS)
+ 
+ # OpenBSD-specific D support.
+ openbsd-d.o: $(srcdir)/config/openbsd-d.cc
+diff --git a/gcc/configure b/gcc/configure
+index 16965953f..288259bb5 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -33065,7 +33065,7 @@ $as_echo "#define HAVE_LD_PPC_GNU_ATTR_LONG_DOUBLE 1" >>confdefs.h
+ esac
+ 
+ case "$target:$tm_file" in
+-  powerpc64*-*-freebsd* | powerpc64*-*-linux* | powerpc*-*-linux*rs6000/biarch64.h*)
++  powerpc64*-*-freebsd* | powerpc64*-*-linux* | powerpc*-*-linux*rs6000/biarch64.h* | powerpc64*-openbsd*)
+   case "$target" in
+      *le-*-linux*)
+      emul_name="-melf64lppc"
+@@ -33079,6 +33079,10 @@ case "$target:$tm_file" in
+      *-*-freebsd*)
+      emul_name="-melf64ppc_fbsd"
+       ;;
++     *-*-openbsd*)
++     gcc_cv_ld_no_dot_syms=yes
++     gcc_cv_ld_large_toc=yes
++      ;;
+   esac
+     { $as_echo "$as_me:${as_lineno-$LINENO}: checking linker support for omitting dot symbols" >&5
+ $as_echo_n "checking linker support for omitting dot symbols... " >&6; }
+@@ -33446,6 +33450,7 @@ else
+ fi
+ 
+         ;;
++       *-*-openbsd*) gcc_cv_libc_provides_ssp=yes ;;
+        *) gcc_cv_libc_provides_ssp=no ;;
+     esac
+   fi
+@@ -33466,6 +33471,7 @@ if test "${enable_default_ssp+set}" = set; then :
+ if test x$gcc_cv_libc_provides_ssp = xyes; then
+   case "$target" in
+     ia64*-*-*) enable_default_ssp=no ;;
++    hppa*-*-*) enable_default_ssp=no ;;
+     *) enable_default_ssp=$enableval ;;
+   esac
+ else
+diff --git a/gcc/defaults.h b/gcc/defaults.h
+index 16f6dc24e..8874ca4b2 100644
+--- a/gcc/defaults.h
++++ b/gcc/defaults.h
+@@ -1437,6 +1437,10 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #define TARGET_VTABLE_USES_DESCRIPTORS 0
+ #endif
+ 
++#ifndef CF_DEFAULT
++#define CF_DEFAULT CF_NONE
++#endif
++
+ #endif /* GCC_INSN_FLAGS_H  */
+ 
+ #ifndef DWARF_GNAT_ENCODINGS_DEFAULT
+diff --git a/gcc/flags.h b/gcc/flags.h
+index bda82ec6f..e3cfd2f24 100644
+--- a/gcc/flags.h
++++ b/gcc/flags.h
+@@ -25,6 +25,9 @@ along with GCC; see the file COPYING3.  If not see
+ /* Names of fundamental debug info formats indexed by enum
+    debug_info_type.  */
+ 
++extern int warn_stack_larger_than;
++extern HOST_WIDE_INT stack_larger_than_size;
++
+ extern const char *const debug_type_names[];
+ 
+ /* Get enum debug_info_type of the specified debug format, for error messages.
+diff --git a/gcc/gcc.cc b/gcc/gcc.cc
+index 4fd87f2c4..3283332ae 100644
+--- a/gcc/gcc.cc
++++ b/gcc/gcc.cc
+@@ -1052,7 +1052,7 @@ proper position among the other output files.  */
+ #else
+ #define LD_PIE_SPEC ""
+ #endif
+-#define LINK_PIE_SPEC "%{static|shared|r:;" PIE_SPEC ":" LD_PIE_SPEC "} "
++#define LINK_PIE_SPEC "%{pie:-pie} %{p|pg|nopie:-nopie} "
+ #endif
+ 
+ #ifndef LINK_BUILDID_SPEC
+diff --git a/gcc/ginclude/stddef.h b/gcc/ginclude/stddef.h
+index bacf24d24..923614f4a 100644
+--- a/gcc/ginclude/stddef.h
++++ b/gcc/ginclude/stddef.h
+@@ -217,6 +217,7 @@ typedef __PTRDIFF_TYPE__ ptrdiff_t;
+ #if defined (__FreeBSD__) \
+   || defined(__DragonFly__) \
+   || defined(__FreeBSD_kernel__) \
++  || defined(__OpenBSD__) \
+   || defined(__VMS__)
+ /* __size_t is a typedef, must not trash it.  */
+ #else
+diff --git a/gcc/lto/lto-common.cc b/gcc/lto/lto-common.cc
+index 646312019..4278fe86b 100644
+--- a/gcc/lto/lto-common.cc
++++ b/gcc/lto/lto-common.cc
+@@ -3139,4 +3139,10 @@ lto_fe_init (void)
+   gimple_register_cfg_hooks ();
+ }
+ 
++const char *
++fname_as_string(int pretty_p __attribute__((__unused__)))
++{
++	return NULL;
++}
++
+ #include "gt-lto-lto-common.h"
+diff --git a/gcc/opts.cc b/gcc/opts.cc
+index ffcbdfef0..b8307d191 100644
+--- a/gcc/opts.cc
++++ b/gcc/opts.cc
+@@ -201,6 +201,9 @@ bool dwarf_based_debuginfo_p ()
+   ((strncmp (prefix, string, sizeof prefix - 1) == 0) \
+    ? ((string += sizeof prefix - 1), 1) : 0)
+ 
++int warn_stack_larger_than;
++HOST_WIDE_INT stack_larger_than_size;
++
+ void
+ set_struct_debug_option (struct gcc_options *opts, location_t loc,
+ 			 const char *spec)
+@@ -655,7 +658,6 @@ static const struct default_options default_options_table[] =
+ #ifdef INSN_SCHEDULING
+     { OPT_LEVELS_2_PLUS, OPT_fschedule_insns2, NULL, 1 },
+ #endif
+-    { OPT_LEVELS_2_PLUS, OPT_fstrict_aliasing, NULL, 1 },
+     { OPT_LEVELS_2_PLUS, OPT_fstore_merging, NULL, 1 },
+     { OPT_LEVELS_2_PLUS, OPT_ftree_pre, NULL, 1 },
+     { OPT_LEVELS_2_PLUS, OPT_ftree_switch_conversion, NULL, 1 },
+@@ -696,6 +698,7 @@ static const struct default_options default_options_table[] =
+     { OPT_LEVELS_3_PLUS, OPT_fpredictive_commoning, NULL, 1 },
+     { OPT_LEVELS_3_PLUS, OPT_fsplit_loops, NULL, 1 },
+     { OPT_LEVELS_3_PLUS, OPT_fsplit_paths, NULL, 1 },
++    { OPT_LEVELS_3_PLUS, OPT_fstrict_aliasing, NULL, 1 },
+     { OPT_LEVELS_3_PLUS, OPT_ftree_loop_distribution, NULL, 1 },
+     { OPT_LEVELS_3_PLUS, OPT_ftree_partial_pre, NULL, 1 },
+     { OPT_LEVELS_3_PLUS, OPT_funswitch_loops, NULL, 1 },
+@@ -1159,6 +1162,8 @@ finish_options (struct gcc_options *opts, struct gcc_options *opts_set,
+ 	opts->x_flag_pic = 0;
+       if (opts->x_flag_pic && !opts->x_flag_pie)
+ 	opts->x_flag_shlib = 1;
++      if (opts->x_profile_flag)
++        opts->x_flag_pie = 0;
+       opts->x_flag_opts_finished = true;
+     }
+ 
+@@ -2754,6 +2759,11 @@ common_handle_option (struct gcc_options *opts,
+       opts->x_exit_after_options = true;
+       break;
+ 
++    case OPT_Wstack_larger_than_:
++      stack_larger_than_size = value;
++      warn_stack_larger_than = stack_larger_than_size != -1;
++       break;
++
+     case OPT__help_:
+       {
+ 	help_option_arguments.safe_push (arg);
+diff --git a/gcc/targhooks.cc b/gcc/targhooks.cc
+index c79458e37..27407fa40 100644
+--- a/gcc/targhooks.cc
++++ b/gcc/targhooks.cc
+@@ -67,6 +67,7 @@ along with GCC; see the file COPYING3.  If not see
+ #include "optabs.h"
+ #include "regs.h"
+ #include "recog.h"
++#include "c-family/c-common.h"
+ #include "diagnostic-core.h"
+ #include "fold-const.h"
+ #include "stor-layout.h"
+@@ -925,7 +926,7 @@ default_stack_protect_guard (void)
+       rtx x;
+ 
+       t = build_decl (UNKNOWN_LOCATION,
+-		      VAR_DECL, get_identifier ("__stack_chk_guard"),
++		      VAR_DECL, get_identifier ("__guard_local"),
+ 		      ptr_type_node);
+       TREE_STATIC (t) = 1;
+       TREE_PUBLIC (t) = 1;
+@@ -934,6 +935,8 @@ default_stack_protect_guard (void)
+       TREE_THIS_VOLATILE (t) = 1;
+       DECL_ARTIFICIAL (t) = 1;
+       DECL_IGNORED_P (t) = 1;
++      DECL_VISIBILITY (t) = VISIBILITY_HIDDEN;
++      DECL_VISIBILITY_SPECIFIED (t) = 1;
+ 
+       /* Do not share RTL as the declaration is visible outside of
+ 	 current function.  */
+@@ -946,67 +949,72 @@ default_stack_protect_guard (void)
+   return t;
+ }
+ 
+-static GTY(()) tree stack_chk_fail_decl;
++static GTY(()) int stack_protect_labelno;
+ 
+ tree
+ default_external_stack_protect_fail (void)
+ {
+-  tree t = stack_chk_fail_decl;
+-
+-  if (t == NULL_TREE)
+-    {
+-      t = build_function_type_list (void_type_node, NULL_TREE);
+-      t = build_decl (UNKNOWN_LOCATION,
+-		      FUNCTION_DECL, get_identifier ("__stack_chk_fail"), t);
+-      TREE_STATIC (t) = 1;
+-      TREE_PUBLIC (t) = 1;
+-      DECL_EXTERNAL (t) = 1;
+-      TREE_USED (t) = 1;
+-      TREE_THIS_VOLATILE (t) = 1;
+-      TREE_NOTHROW (t) = 1;
+-      DECL_ARTIFICIAL (t) = 1;
+-      DECL_IGNORED_P (t) = 1;
+-      DECL_VISIBILITY (t) = VISIBILITY_DEFAULT;
+-      DECL_VISIBILITY_SPECIFIED (t) = 1;
+-
+-      stack_chk_fail_decl = t;
+-    }
+-
+-  return build_call_expr (t, 0);
++  tree t, func, type, init, stack_smash_handler;
++  const char *tmp_name;
++  char *name;
++  size_t length;
++  char name_buf[32];
++
++  name = (char *)xmalloc(32);
++  if (NULL == (tmp_name = fname_as_string (0))) {
++    strcpy (name, "*unknown*");
++  } else {
++    strcpy (name, tmp_name);
++  }
++  
++  length = strlen (name);
++  /* Build a decl for __func__. */
++  type = build_array_type (char_type_node,
++			build_index_type (size_int (length)));
++  type = build_qualified_type (type, TYPE_QUAL_CONST);
++
++  init = build_string (length + 1, name);
++  free ((char *) name);
++  TREE_TYPE (init) = type;
++
++  func = build_decl (UNKNOWN_LOCATION, VAR_DECL, NULL_TREE, type);
++  TREE_STATIC (func) = 1;
++  TREE_READONLY (func) = 1;
++  DECL_ARTIFICIAL (func) = 1;
++  ASM_GENERATE_INTERNAL_LABEL (name_buf, "LSSH", stack_protect_labelno++);
++  DECL_NAME (func) = get_identifier (name_buf);
++  DECL_INITIAL (func) = init;
++
++  assemble_variable (func, 0, 0, 0);
++
++  /* Build a decl for __stack_smash_handler. */
++  t = build_pointer_type (TREE_TYPE (func));
++  t = build_function_type_list (void_type_node, t, NULL_TREE);
++  t = build_decl (UNKNOWN_LOCATION,
++  		  FUNCTION_DECL, get_identifier ("__stack_smash_handler"), t);
++  /* t = build_fn_decl ("__stack_smash_handler", t); */
++  TREE_STATIC (t) = 1;
++  TREE_PUBLIC (t) = 1;
++  DECL_EXTERNAL (t) = 1;
++  TREE_USED (t) = 1;
++  TREE_THIS_VOLATILE (t) = 1;
++  TREE_NOTHROW (t) = 1;
++  DECL_ARTIFICIAL (t) = 1;
++  DECL_IGNORED_P (t) = 1;
++  DECL_VISIBILITY (t) = VISIBILITY_DEFAULT;
++  DECL_VISIBILITY_SPECIFIED (t) = 1;
++
++  stack_smash_handler = t;
++
++  /* Generate a call to __stack_smash_handler(__func__). */
++  t = build_fold_addr_expr (func);
++  return build_call_expr (stack_smash_handler, 1, t);
+ }
+ 
+ tree
+ default_hidden_stack_protect_fail (void)
+ {
+-#ifndef HAVE_GAS_HIDDEN
+   return default_external_stack_protect_fail ();
+-#else
+-  tree t = stack_chk_fail_decl;
+-
+-  if (!flag_pic)
+-    return default_external_stack_protect_fail ();
+-
+-  if (t == NULL_TREE)
+-    {
+-      t = build_function_type_list (void_type_node, NULL_TREE);
+-      t = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
+-		      get_identifier ("__stack_chk_fail_local"), t);
+-      TREE_STATIC (t) = 1;
+-      TREE_PUBLIC (t) = 1;
+-      DECL_EXTERNAL (t) = 1;
+-      TREE_USED (t) = 1;
+-      TREE_THIS_VOLATILE (t) = 1;
+-      TREE_NOTHROW (t) = 1;
+-      DECL_ARTIFICIAL (t) = 1;
+-      DECL_IGNORED_P (t) = 1;
+-      DECL_VISIBILITY_SPECIFIED (t) = 1;
+-      DECL_VISIBILITY (t) = VISIBILITY_HIDDEN;
+-
+-      stack_chk_fail_decl = t;
+-    }
+-
+-  return build_call_expr (t, 0);
+-#endif
+ }
+ 
+ bool
+diff --git a/gcc/tree-vect-loop.cc b/gcc/tree-vect-loop.cc
+index c824b5aba..e113e6d8b 100644
+--- a/gcc/tree-vect-loop.cc
++++ b/gcc/tree-vect-loop.cc
+@@ -59,6 +59,8 @@ along with GCC; see the file COPYING3.  If not see
+ #include "case-cfn-macros.h"
+ #include "langhooks.h"
+ 
++#define vec_step vec_step_
++
+ /* Loop Vectorization Pass.
+ 
+    This pass tries to vectorize loops.
+diff --git a/libatomic/configure.tgt b/libatomic/configure.tgt
+index 6db039d6e..48c70c747 100644
+--- a/libatomic/configure.tgt
++++ b/libatomic/configure.tgt
+@@ -69,7 +69,7 @@ case "${target_cpu}" in
+ 	    ;;
+ 	  *)
+ 	    if test -z "$with_cpu"; then
+-	      XCFLAGS="${XCFLAGS} -mcpu=v9"
++	      XCFLAGS="${XCFLAGS} -mcpu=v7"
+ 	    fi
+ 	esac
+ 	ARCH=sparc
+diff --git a/libbacktrace/configure b/libbacktrace/configure
+index 85be04300..3871bbf82 100755
+--- a/libbacktrace/configure
++++ b/libbacktrace/configure
+@@ -6447,7 +6447,7 @@ darwin* | rhapsody*)
+   lt_cv_deplibs_check_method=pass_all
+   ;;
+ 
+-freebsd* | dragonfly*)
++freebsd* | dragonfly* | openbsd*)
+   if echo __ELF__ | $CC -E - | $GREP __ELF__ > /dev/null; then
+     case $host_cpu in
+     i*86 )
+@@ -9865,7 +9865,7 @@ fi
+       ;;
+ 
+     # FreeBSD 3 and greater uses gcc -shared to do shared libraries.
+-    freebsd* | dragonfly*)
++    freebsd* | dragonfly* | openbsd*)
+       archive_cmds='$CC -shared -o $lib $libobjs $deplibs $compiler_flags'
+       hardcode_libdir_flag_spec='-R$libdir'
+       hardcode_direct=yes
+diff --git a/libffi/include/Makefile.in b/libffi/include/Makefile.in
+index 9759f0d91..36cdc5b6f 100644
+--- a/libffi/include/Makefile.in
++++ b/libffi/include/Makefile.in
+@@ -500,7 +500,7 @@ info: info-am
+ 
+ info-am:
+ 
+-install-data-am: install-toollibffiHEADERS
++install-data-am:
+ 
+ install-dvi: install-dvi-am
+ 
+diff --git a/libffi/src/closures.c b/libffi/src/closures.c
+index f7bead67b..9da00ef34 100644
+--- a/libffi/src/closures.c
++++ b/libffi/src/closures.c
+@@ -878,6 +878,7 @@ dlmmap (void *start, size_t length, int prot,
+       return ptr;
+     }
+ 
++#if 0
+   if (execfd == -1 && is_emutramp_enabled ())
+     {
+       ptr = mmap (start, length, prot & ~PROT_EXEC, flags, fd, offset);
+@@ -896,6 +897,7 @@ dlmmap (void *start, size_t length, int prot,
+ 	 with ((prot & ~PROT_WRITE) | PROT_EXEC) and mremap with
+ 	 MREMAP_DUP and prot at this point.  */
+     }
++#endif
+ 
+   if (execsize == 0 || execfd == -1)
+     {
+diff --git a/libgcc/config.host b/libgcc/config.host
+index 6a88ee5a2..742c6e83e 100644
+--- a/libgcc/config.host
++++ b/libgcc/config.host
+@@ -429,6 +429,14 @@ aarch64*-*-netbsd*)
+ 	md_unwind_def_header=aarch64/aarch64-unwind-def.h
+ 	md_unwind_header=aarch64/aarch64-unwind.h
+ 	;;
++aarch64-*-openbsd*)
++	extra_parts="$extra_parts crtfastmath.o"
++	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
++	tmake_file="${tmake_file} ${cpu_type}/t-lse"
++	tmake_file="${tmake_file} ${cpu_type}/t-softfp t-softfp t-crtfm"
++	md_unwind_def_header=aarch64/aarch64-unwind-def.h
++	md_unwind_header=aarch64/aarch64-unwind.h
++	;;
+ aarch64*-*-fuchsia*)
+ 	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
+ 	tmake_file="${tmake_file} ${cpu_type}/t-lse t-slibgcc-libgcc"
+@@ -552,8 +560,13 @@ arm*-*-netbsdelf*)
+ 	    ;;
+ 	esac
+ 	;;
+-arm*-*-linux* | arm*-*-uclinuxfdpiceabi)
+-	tmake_file="${tmake_file} arm/t-arm t-fixedpoint-gnu-prefix t-crtfm"
++arm-*-openbsd*)
++	tmake_file="$tmake_file arm/t-arm arm/t-elf arm/t-bpabi"
++	tmake_file="$tmake_file t-softfp-sfdf t-softfp-excl arm/t-softfp t-softfp"
++	unwind_header=config/arm/unwind-arm.h
++	;;
++arm*-*-linux*	| arm*-*-uclinuxfdpiceabi)
++	tmake_file="${tmake_file}	arm/t-arm t-fixedpoint-gnu-prefix t-crtfm"
+ 	tmake_file="${tmake_file} arm/t-elf arm/t-bpabi arm/t-linux-eabi t-slibgcc-libgcc"
+ 	tm_file="$tm_file arm/bpabi-lib.h"
+ 	unwind_header=config/arm/unwind-arm.h
+@@ -1063,6 +1076,12 @@ microblaze*-*-rtems*)
+ 	;;
+ mips*-*-netbsd*)			# NetBSD/mips, either endian.
+ 	;;
++mips64-*-openbsd*)
++       set
++       ;;
++mips64el-*-openbsd*)
++       set
++       ;;
+ mips*-*-linux*)				# Linux MIPS, either endian.
+ 	extra_parts="$extra_parts crtfastmath.o"
+ 	tmake_file="${tmake_file} t-crtfm"
+@@ -1242,6 +1261,9 @@ powerpc*-*-freebsd*)
+ powerpc-*-netbsd*)
+ 	tmake_file="$tmake_file rs6000/t-netbsd rs6000/t-crtstuff"
+ 	;;
++powerpc*-*-openbsd*)
++	tmake_file="${tmake_file} rs6000/t-ppccomm rs6000/t-crtstuff rs6000/t-openbsd"
++	;;
+ powerpc-*-eabisimaltivec*)
+ 	tmake_file="${tmake_file} rs6000/t-ppccomm rs6000/t-crtstuff t-crtstuff-pic t-fdpbit"
+ 	extra_parts="$extra_parts crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o ecrti.o ecrtn.o ncrti.o ncrtn.o"
+@@ -1358,6 +1380,9 @@ riscv*-*-freebsd*)
+ 	tmake_file="${tmake_file} riscv/t-crtstuff riscv/t-softfp${host_address} t-softfp riscv/t-elf riscv/t-elf${host_address} t-slibgcc-libgcc"
+ 	extra_parts="$extra_parts crtbegin.o crtend.o crti.o crtn.o crtendS.o crtbeginT.o"
+ 	;;
++riscv64-*-openbsd*)
++	tmake_file="${tmake_file} riscv/t-softfp${host_address} t-softfp riscv/t-elf riscv/t-elf${host_address}"
++	;;
+ riscv*-*-*)
+ 	tmake_file="${tmake_file} riscv/t-softfp${host_address} t-softfp riscv/t-elf riscv/t-elf${host_address}"
+ 	extra_parts="$extra_parts crtbegin.o crtend.o crti.o crtn.o"
+diff --git a/libgcc/config/arm/unwind-arm.h b/libgcc/config/arm/unwind-arm.h
+index f8e542dec..32f520521 100644
+--- a/libgcc/config/arm/unwind-arm.h
++++ b/libgcc/config/arm/unwind-arm.h
+@@ -74,7 +74,7 @@ static inline _Unwind_Ptr _Unwind_gnu_Find_got (_Unwind_Ptr ptr)
+       tmp += _Unwind_gnu_Find_got (ptr);
+       tmp = *(_Unwind_Word *) tmp;
+ #elif (defined(linux) && !defined(__uClinux__)) || defined(__NetBSD__) \
+-    || defined(__FreeBSD__) || defined(__fuchsia__)
++    || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__fuchsia__)
+       /* Pc-relative indirect.  */
+ #define _GLIBCXX_OVERRIDE_TTYPE_ENCODING (DW_EH_PE_pcrel | DW_EH_PE_indirect)
+       tmp += ptr;
+diff --git a/libgcc/config/rs6000/t-openbsd b/libgcc/config/rs6000/t-openbsd
+new file mode 100644
+index 000000000..764abc6de
+--- /dev/null
++++ b/libgcc/config/rs6000/t-openbsd
+@@ -0,0 +1,12 @@
++# already added in libgcc/config/rs6000/t-ppccomm
++# LIB2ADD = $(srcdir)/config/rs6000/tramp.S
++
++LIB2ADD_ST += \
++	$(srcdir)/config/rs6000/crtsavfpr.S \
++	$(srcdir)/config/rs6000/crtresfpr.S \
++	$(srcdir)/config/rs6000/crtsavgpr.S \
++	$(srcdir)/config/rs6000/crtresgpr.S \
++	$(srcdir)/config/rs6000/crtresxfpr.S \
++	$(srcdir)/config/rs6000/crtresxgpr.S \
++	$(srcdir)/config/rs6000/crtsavevr.S \
++	$(srcdir)/config/rs6000/crtrestvr.S
+diff --git a/libgcc/libgcc2.c b/libgcc/libgcc2.c
+index 92cb79dc8..c5b5979e9 100644
+--- a/libgcc/libgcc2.c
++++ b/libgcc/libgcc2.c
+@@ -3061,6 +3061,7 @@ mprotect (char *addr, int len, int prot)
+ #endif /* WINNT && ! __CYGWIN__ */
+ 
+ #ifdef TRANSFER_FROM_TRAMPOLINE
++#include <sys/mman.h>
+ TRANSFER_FROM_TRAMPOLINE
+ #endif
+ #endif /* L_trampoline */
+diff --git a/libgcc/unwind-dw2.c b/libgcc/unwind-dw2.c
+index 883b1c7a1..89bd34861 100644
+--- a/libgcc/unwind-dw2.c
++++ b/libgcc/unwind-dw2.c
+@@ -214,6 +214,25 @@ _Unwind_IsExtendedContext (struct _Unwind_Context *context)
+   return (ASSUME_EXTENDED_UNWIND_CONTEXT
+ 	  || (context->flags & EXTENDED_CONTEXT_BIT));
+ }
++
++#ifdef __sparc64__
++
++/* Figure out StackGhost cookie.  */
++_Unwind_Word uw_get_wcookie(void);
++
++asm(".text\n"
++    "uw_get_wcookie:\n"
++    "	add  %o7, %g0, %g4\n"
++    "	save %sp, -176, %sp\n"
++    "	save %sp, -176, %sp\n"
++    "	flushw\n"
++    "	restore\n"
++    "	ldx [%sp + 2047 + 120], %g5\n"
++    "	xor %g4, %g5, %i0\n"
++    "	ret\n"
++    "	 restore\n");
++#endif
++
+ 
+ /* Get the value of register REGNO as saved in CONTEXT.  */
+ 
+@@ -244,6 +263,13 @@ _Unwind_GetGR (struct _Unwind_Context *context, int regno)
+   }
+ #endif
+ 
++#ifdef __sparc64__
++  /* _Unwind_Word and _Unwind_Ptr are the same size on sparc64 */
++  _Unwind_Word reg = * (_Unwind_Word *) val;
++  if (index == 15 || index == 31) 
++    reg ^= uw_get_wcookie ();
++  return reg;
++#else
+   /* This will segfault if the register hasn't been saved.  */
+   if (size == sizeof(_Unwind_Ptr))
+     return * (_Unwind_Ptr *) (_Unwind_Internal_Ptr) val;
+@@ -252,6 +278,7 @@ _Unwind_GetGR (struct _Unwind_Context *context, int regno)
+       gcc_assert (size == sizeof(_Unwind_Word));
+       return * (_Unwind_Word *) (_Unwind_Internal_Ptr) val;
+     }
++#endif
+ }
+ 
+ static inline void *
+diff --git a/libstdc++-v3/config/os/bsd/openbsd/ctype_base.h b/libstdc++-v3/config/os/bsd/openbsd/ctype_base.h
+index 4237a4860..d22bd8ba3 100644
+--- a/libstdc++-v3/config/os/bsd/openbsd/ctype_base.h
++++ b/libstdc++-v3/config/os/bsd/openbsd/ctype_base.h
+@@ -42,6 +42,22 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     // on the mask type. Because of this, we don't use an enum.
+     typedef char		mask;
+ 
++#ifdef _CTYPE_U
++    static const mask upper	= _CTYPE_U;
++    static const mask lower	= _CTYPE_L;
++    static const mask alpha	= _CTYPE_U | _CTYPE_L;
++    static const mask digit	= _CTYPE_N;
++    static const mask xdigit	= _CTYPE_N | _CTYPE_X;
++    static const mask space	= _CTYPE_S;
++    static const mask print	= _CTYPE_P | _CTYPE_U | _CTYPE_L | _CTYPE_N | _CTYPE_B;
++    static const mask graph	= _CTYPE_P | _CTYPE_U | _CTYPE_L | _CTYPE_N;
++    static const mask cntrl	= _CTYPE_C;
++    static const mask punct	= _CTYPE_P;
++    static const mask alnum	= _CTYPE_U | _CTYPE_L | _CTYPE_N;
++# if __cplusplus >= 201103L
++    static const mask blank	= space;
++# endif
++#else
+     static const mask upper	= _U;
+     static const mask lower	= _L;
+     static const mask alpha	= _U | _L;
+@@ -53,8 +69,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     static const mask cntrl	= _C;
+     static const mask punct	= _P;
+     static const mask alnum	= _U | _L | _N;
+-#if __cplusplus >= 201103L
++# if __cplusplus >= 201103L
+     static const mask blank	= space;
++# endif
+ #endif
+   };
+ 
+-- 
+2.49.0
+

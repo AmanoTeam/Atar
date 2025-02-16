@@ -1,15 +1,9 @@
 From 05a70b601cc06aa0916eb00a60c1c6e988c9a7ae Mon Sep 17 00:00:00 2001
 From: Kartatz <105828205+Kartatz@users.noreply.github.com>
 Date: Wed, 15 May 2024 20:00:54 +0200
-Subject: [PATCH] Disable libfunc support for hppa-unknown-openbsd
+Subject: [PATCH] Disable libfunc support for hppa
 
-For some reason, it does not work for that target. The following error is printed when attempting to link a specific object file of the libgcc:
-
-/tmp/ccjrUHAs.s: Assembler messages:
-/tmp/ccjrUHAs.s:78: Error: Unknown opcode: `stws|stw} %r23,-16(%sp)'
-/tmp/ccjrUHAs.s:81: Error: Invalid operands 
-
-I do not know if this is a GCC bug or it just happens that our target does not support this feature.
+Seems to be an upstream GCC bug.
 ---
  libgcc/config/pa/t-openbsd | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
