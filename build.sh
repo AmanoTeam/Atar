@@ -317,7 +317,7 @@ for triplet in "${targets[@]}"; do
 		--with-mpfr="${toolchain_directory}" \
 		--with-bugurl='https://github.com/AmanoTeam/Atar/issues' \
 		--with-gcc-major-version-only \
-		--with-pkgversion="Atar v0.7-${revision}" \
+		--with-pkgversion="Atar v0.8-${revision}" \
 		--with-sysroot="${toolchain_directory}/${triplet}" \
 		--with-native-system-header-dir='/include' \
 		--enable-__cxa_atexit \
@@ -354,7 +354,7 @@ for triplet in "${targets[@]}"; do
 		LDFLAGS="${linkflags}"
 	
 	declare CFLAGS_FOR_TARGET="${optflags} ${linkflags}"
-	declare CXXFLAGS_FOR_TARGET="${optflags} ${linkflags} -fpermissive"
+	declare CXXFLAGS_FOR_TARGET="${optflags} ${linkflags}"
 	
 	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80196#c12
 	if ! (( is_native )); then

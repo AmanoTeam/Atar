@@ -17,7 +17,7 @@ jobs:
       id: check-cache
       uses: actions/cache@main
       with:
-        key: gcc-15.0.1
+        key: gcc-15.0.1-1
         lookup-only: true
         path: |
           /tmp/x86_64-linux-gnu.tar.xz
@@ -45,7 +45,7 @@ jobs:
       if: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
       uses: actions/cache@main
       with:
-        key: gcc-15.0.1
+        key: gcc-15.0.1-1
         path: |
           /tmp/x86_64-linux-gnu.tar.xz
           /tmp/x86_64-linux-gnu.tar.xz.sha256
@@ -71,77 +71,10 @@ jobs:
     - uses: actions/checkout@main
       with:
         submodules: true
-    - name: Free up some space
-      if: false
-      run: |
-        sudo apt purge --allow-remove-essential --auto-remove \
-            '*apache2*' \
-            '*docker*' \
-            '*dotnet*' \
-            '*firefox*' \
-            '*google*' \
-            '*gstreamer*' \
-            '*jdk*' \
-            '*nginx*' \
-            '*php*' \
-            '*ruby*' \
-            '*wayland*' \
-            'auto*' \
-            'azure-cli' \
-            'bind9*' \
-            'clang*' \
-            'container*' \
-            'fonts*' \
-            'gcc-9' \
-            'gcc-10' \
-            'gcc-11' \
-            'gcc-12' \
-            'gh' \
-            'glib*' \
-            'libmono*' \
-            'lld*' \
-            'llvm*' \
-            'mercurial*' \
-            'mysql*' \
-            'postgresql*' \
-            'powershell' \
-            'vim*' \
-            'x11*' \
-            'xdg*' > '/dev/null'
-        sudo apt purge --allow-remove-essential --auto-remove \
-            'linux-*' \
-            'apt' > '/dev/null'
-        sudo rm --recursive --force \
-            "${HOME}/.cargo" \
-            "${HOME}/.rustup" \
-            "${HOME}/linuxbrew" \
-            '/etc/apt' \
-            '/etc/cni/net.d' \
-            '/etc/docker' \
-            '/etc/mono' \
-            '/etc/mysql' \
-            '/lib/tmpfiles.d' \
-            '/opt/'* \
-            '/opt/az' \
-            '/usr/lib/heroku' \
-            '/usr/lib/mono' \
-            '/usr/libexec/docker' \
-            '/usr/local/lib/android' \
-            '/usr/local/lib/android' \
-            '/usr/local/share/man' \
-            '/usr/local/share/vcpkg' \
-            '/usr/share/fonts' \
-            '/usr/share/icons' \
-            '/usr/share/java' \
-            '/usr/share/php' \
-            '/usr/share/swift' \
-            '/var/lib/apache2' \
-            '/var/lib/gems' \
-            '/var/log'
     - name: Restore from cache
       uses: actions/cache@main
       with:
-        key: gcc-15.0.1
+        key: gcc-15.0.1-1
         fail-on-cache-miss: true
         path: |
           /tmp/x86_64-linux-gnu.tar.xz
