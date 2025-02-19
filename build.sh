@@ -317,7 +317,7 @@ for triplet in "${targets[@]}"; do
 		--with-mpfr="${toolchain_directory}" \
 		--with-bugurl='https://github.com/AmanoTeam/Atar/issues' \
 		--with-gcc-major-version-only \
-		--with-pkgversion="Atar v0.6-${revision}" \
+		--with-pkgversion="Atar v0.7-${revision}" \
 		--with-sysroot="${toolchain_directory}/${triplet}" \
 		--with-native-system-header-dir='/include' \
 		--enable-__cxa_atexit \
