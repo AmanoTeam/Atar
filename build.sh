@@ -51,8 +51,20 @@ function setup_gcc_source() {
 	declare -r gcc_tarball
 	
 	if ! [ -f "${gcc_tarball}" ]; then
-		wget --no-verbose "${gcc_url}" --output-document="${gcc_tarball}"
-		tar --directory="$(dirname "${gcc_directory}")" --extract --file="${gcc_tarball}"
+		curl \
+			--url "${gcc_url}" \
+			--retry '30' \
+			--retry-all-errors \
+			--retry-delay '0' \
+			--retry-max-time '0' \
+			--location \
+			--silent \
+			--output "${gcc_tarball}"
+		
+		tar \
+			--directory="$(dirname "${gcc_directory}")" \
+			--extract \
+			--file="${gcc_tarball}"
 	fi
 	
 	[ -d "${gcc_directory}/build" ] || mkdir "${gcc_directory}/build"
@@ -82,10 +94,13 @@ function setup_gcc_source() {
 	
 }
 
-declare optflags=''
-declare -r linkflags='-Wl,-s'
+declare -r max_jobs='40'
 
-declare -r max_jobs="$(($(nproc) * 17))"
+declare -r optlto="-flto=${max_jobs} -fno-fat-lto-objects"
+declare -r optfatlto="-flto=${max_jobs} -ffat-lto-objects"
+
+declare -r optflags='-w -O2'
+declare -r linkflags='-Wl,-s'
 
 declare build_type="${1}"
 
@@ -100,31 +115,81 @@ if [ "${build_type}" == 'native' ]; then
 fi
 
 declare CROSS_COMPILE_TRIPLET=''
-declare cross_compile_flags=''
 
 if ! (( is_native )); then
 	source "./submodules/obggcc/toolchains/${build_type}.sh"
-	cross_compile_flags+="--host=${CROSS_COMPILE_TRIPLET}"
 fi
 
+declare -r \
+	build_type \
+	is_native
+
 if ! [ -f "${gmp_tarball}" ]; then
-	wget --no-verbose 'https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz' --output-document="${gmp_tarball}"
-	tar --directory="$(dirname "${gmp_directory}")" --extract --file="${gmp_tarball}"
+	curl \
+		--url 'https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz' \
+		--retry '30' \
+		--retry-all-errors \
+		--retry-delay '0' \
+		--retry-max-time '0' \
+		--location \
+		--silent \
+		--output "${gmp_tarball}"
+	
+	tar \
+		--directory="$(dirname "${gmp_directory}")" \
+		--extract \
+		--file="${gmp_tarball}"
 fi
 
 if ! [ -f "${mpfr_tarball}" ]; then
-	wget --no-verbose 'https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz' --output-document="${mpfr_tarball}"
-	tar --directory="$(dirname "${mpfr_directory}")" --extract --file="${mpfr_tarball}"
+	curl \
+		--url 'https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz' \
+		--retry '30' \
+		--retry-all-errors \
+		--retry-delay '0' \
+		--retry-max-time '0' \
+		--location \
+		--silent \
+		--output "${mpfr_tarball}"
+	
+	tar \
+		--directory="$(dirname "${mpfr_directory}")" \
+		--extract \
+		--file="${mpfr_tarball}"
 fi
 
 if ! [ -f "${mpc_tarball}" ]; then
-	wget --no-verbose 'https://ftp.gnu.org/gnu/mpc/mpc-1.3.1.tar.gz' --output-document="${mpc_tarball}"
-	tar --directory="$(dirname "${mpc_directory}")" --extract --file="${mpc_tarball}"
+	curl \
+		--url 'https://ftp.gnu.org/gnu/mpc/mpc-1.3.1.tar.gz' \
+		--retry '30' \
+		--retry-all-errors \
+		--retry-delay '0' \
+		--retry-max-time '0' \
+		--location \
+		--silent \
+		--output "${mpc_tarball}"
+	
+	tar \
+		--directory="$(dirname "${mpc_directory}")" \
+		--extract \
+		--file="${mpc_tarball}"
 fi
 
 if ! [ -f "${binutils_tarball}" ]; then
-	wget --no-verbose 'https://ftp.gnu.org/gnu/binutils/binutils-with-gold-2.44.tar.xz' --output-document="${binutils_tarball}"
-	tar --directory="$(dirname "${binutils_directory}")" --extract --file="${binutils_tarball}"
+	curl \
+		--url 'https://ftp.gnu.org/gnu/binutils/binutils-with-gold-2.44.tar.xz' \
+		--retry '30' \
+		--retry-all-errors \
+		--retry-delay '0' \
+		--retry-max-time '0' \
+		--location \
+		--silent \
+		--output "${binutils_tarball}"
+	
+	tar \
+		--directory="$(dirname "${binutils_directory}")" \
+		--extract \
+		--file="${binutils_tarball}"
 	
 	patch --directory="${binutils_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Revert-gold-Use-char16_t-char32_t-instead-of-uint16_.patch"
 	patch --directory="${binutils_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Disable-annoying-linker-warnings.patch"
@@ -139,8 +204,21 @@ if ! [ -f "${lld_tarball}" ]; then
 		target='x86_64-unknown-linux-gnu'
 	fi
 	
-	wget --no-verbose "https://github.com/AmanoTeam/LLVM-LLD-Builds/releases/latest/download/${target}.tar.xz" --output-document="${lld_tarball}"
-	tar --directory="${toolchain_directory}" --extract --strip='1' --file="${lld_tarball}"
+	curl \
+		--url "https://github.com/AmanoTeam/LLVM-LLD-Builds/releases/latest/download/${target}.tar.xz" \
+		--retry '30' \
+		--retry-all-errors \
+		--retry-delay '0' \
+		--retry-max-time '0' \
+		--location \
+		--silent \
+		--output "${lld_tarball}"
+	
+	tar \
+		--directory="${toolchain_directory}" \
+		--extract \
+		--strip='1' \
+		--file="${lld_tarball}"
 fi
 
 [ -d "${gmp_directory}/build" ] || mkdir "${gmp_directory}/build"
@@ -148,13 +226,13 @@ fi
 cd "${gmp_directory}/build"
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--enable-shared \
 	--enable-static \
-	${cross_compile_flags} \
-	CFLAGS="${optflags}" \
-	CXXFLAGS="${optflags}" \
-	LDFLAGS="${linkflags}"
+	CFLAGS="${optflags} ${optlto}" \
+	CXXFLAGS="${optflags} ${optlto}" \
+	LDFLAGS="${linkflags} ${optlto}"
 
 make all --silent --jobs
 make install
@@ -164,14 +242,14 @@ make install
 cd "${mpfr_directory}/build"
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
 	--enable-static \
-	${cross_compile_flags} \
-	CFLAGS="${optflags}" \
-	CXXFLAGS="${optflags}" \
-	LDFLAGS="${linkflags}"
+	CFLAGS="${optflags} ${optlto}" \
+	CXXFLAGS="${optflags} ${optlto}" \
+	LDFLAGS="${linkflags} ${optlto}"
 
 make all --silent --jobs
 make install
@@ -181,21 +259,21 @@ make install
 cd "${mpc_directory}/build"
 
 ../configure \
+	--host="${CROSS_COMPILE_TRIPLET}" \
 	--prefix="${toolchain_directory}" \
 	--with-gmp="${toolchain_directory}" \
 	--enable-shared \
 	--enable-static \
-	${cross_compile_flags} \
-	CFLAGS="${optflags}" \
-	CXXFLAGS="${optflags}" \
-	LDFLAGS="${linkflags}"
+	CFLAGS="${optflags} ${optlto}" \
+	CXXFLAGS="${optflags} ${optlto}" \
+	LDFLAGS="${linkflags} ${optlto}"
 
 make all --silent --jobs
 make install
 
 [ -d "${binutils_directory}/build" ] || mkdir "${binutils_directory}/build"
 
-declare -r targets=(
+declare -ra targets=(
 	'x86_64-unknown-openbsd'
 	'i386-unknown-openbsd'
 	'alpha-unknown-openbsd'
@@ -228,16 +306,16 @@ for triplet in "${targets[@]}"; do
 	fi
 	
 	../configure \
+		--host="${CROSS_COMPILE_TRIPLET}" \
 		--target="${triplet}" \
 		--prefix="${toolchain_directory}" \
 		--disable-gprofng \
 		--with-static-standard-libraries \
 		--with-sysroot="${toolchain_directory}/${triplet}" \
 		${extra_binutils_flags} \
-		${cross_compile_flags} \
-		CFLAGS="${optflags}" \
-		CXXFLAGS="${optflags}" \
-		LDFLAGS="${linkflags}"
+		CFLAGS="${optflags} ${optlto}" \
+		CXXFLAGS="${optflags} ${optlto}" \
+		LDFLAGS="${linkflags} ${optlto}"
 	
 	make all --jobs > /dev/null
 	make install
@@ -248,10 +326,15 @@ for triplet in "${targets[@]}"; do
 	declare sysroot_file="${PWD}/${triplet}.tar.xz"
 	declare sysroot_directory="${PWD}/${triplet}"
 	
-	wget \
-		--no-verbose \
-		--output-document="${sysroot_file}" \
-		"${sysroot_url}"
+	curl \
+		--url "${sysroot_url}" \
+		--retry '30' \
+		--retry-all-errors \
+		--retry-delay '0' \
+		--retry-max-time '0' \
+		--location \
+		--silent \
+		--output "${sysroot_file}"
 	
 	tar \
 		--extract \
@@ -301,14 +384,8 @@ for triplet in "${targets[@]}"; do
 		extra_configure_flags+='--disable-lto '
 	fi
 	
-	# The compiler for powerpc64 breaks if compiled with -Os
-	if [ "${triplet}" = 'powerpc64-unknown-openbsd' ]; then
-		optflags='-w -O2'
-	else
-		optflags='-w -Os'
-	fi
-	
 	../configure \
+		--host="${CROSS_COMPILE_TRIPLET}" \
 		--target="${triplet}" \
 		--prefix="${toolchain_directory}" \
 		--with-linker-hash-style='gnu' \
@@ -317,7 +394,7 @@ for triplet in "${targets[@]}"; do
 		--with-mpfr="${toolchain_directory}" \
 		--with-bugurl='https://github.com/AmanoTeam/Atar/issues' \
 		--with-gcc-major-version-only \
-		--with-pkgversion="Atar v0.8-${revision}" \
+		--with-pkgversion="Atar v0.9-${revision}" \
 		--with-sysroot="${toolchain_directory}/${triplet}" \
 		--with-native-system-header-dir='/include' \
 		--enable-__cxa_atexit \
@@ -345,7 +422,6 @@ for triplet in "${targets[@]}"; do
 		--disable-nls \
 		--disable-tls \
 		--disable-werror \
-		${cross_compile_flags} \
 		${extra_configure_flags} \
 		am_cv_func_iconv=no \
 		ac_cv_header_magic_h=no \
