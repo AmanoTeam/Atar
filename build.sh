@@ -460,6 +460,10 @@ for triplet in "${targets[@]}"; do
 		extra_configure_flags+='--disable-lto '
 	fi
 	
+	if ! (( is_native )); then
+		extra_configure_flags+="--with-specs=%{!fno-plt:%{!fplt:-fno-plt}} "
+	fi
+	
 	export \
 		am_cv_func_iconv=no \
 		ac_cv_header_magic_h=no \
@@ -503,7 +507,6 @@ for triplet in "${targets[@]}"; do
 		--enable-cxx-flags="${linkflags}" \
 		--enable-host-pie \
 		--enable-host-shared \
-		--with-specs='%{!fno-plt:%{!fplt:-fno-plt}}' \
 		--without-headers \
 		--disable-libsanitizer \
 		--disable-bootstrap \
