@@ -390,7 +390,7 @@ for triplet in "${targets[@]}"; do
 		--with-zstd="${toolchain_directory}" \
 		${extra_binutils_flags} \
 		CFLAGS="${optflags} -I${toolchain_directory}/include" \
-		CXXFLAGS="${optflags}" \
+		CXXFLAGS="${optflags} -I${toolchain_directory}/include" \
 		LDFLAGS="${linkflags}"
 	
 	make all --jobs > /dev/null
@@ -460,10 +460,6 @@ for triplet in "${targets[@]}"; do
 		extra_configure_flags+='--disable-lto '
 	fi
 	
-	if ! (( is_native )); then
-		extra_configure_flags+="--with-specs=%{!fno-plt:%{!fplt:-fno-plt}} "
-	fi
-	
 	export \
 		am_cv_func_iconv=no \
 		ac_cv_header_magic_h=no \
@@ -500,6 +496,7 @@ for triplet in "${targets[@]}"; do
 		--enable-cpp \
 		--enable-default-pie \
 		--enable-default-ssp \
+		--enable-libssp \
 		--enable-standard-branch-protection \
 		--enable-wchar_t \
 		--enable-plugin \
@@ -507,12 +504,12 @@ for triplet in "${targets[@]}"; do
 		--enable-cxx-flags="${linkflags}" \
 		--enable-host-pie \
 		--enable-host-shared \
+		--with-specs="%{!fno-plt:%{!fplt:-fno-plt}}" \
 		--without-headers \
 		--disable-libsanitizer \
 		--disable-bootstrap \
 		--disable-libgomp \
 		--disable-libmudflap \
-		--disable-libssp \
 		--disable-libstdcxx-pch \
 		--disable-multilib \
 		--disable-nls \
