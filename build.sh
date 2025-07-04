@@ -2,6 +2,8 @@
 
 set -eu
 
+export LD_LIBRARY_PATH=${toolchain_directory}-toolchain/lib
+
 declare -r workdir="${PWD}"
 
 declare -r revision="$(git rev-parse --short HEAD)"
@@ -453,8 +455,6 @@ for triplet in "${targets[@]}"; do
 	export \
 		am_cv_func_iconv=no \
 		ac_cv_header_magic_h=no
-	
-	export LD_LIBRARY_PATH=${toolchain_directory}-toolchain/lib
 	
 	../configure \
 		--host="${CROSS_COMPILE_TRIPLET}" \
