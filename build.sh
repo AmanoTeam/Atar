@@ -210,6 +210,10 @@ if ! [ -f "${gcc_tarball}" ]; then
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Disable-SONAME-versioning-for-all-target-libraries.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Change-GCC-s-C-standard-library-name-to-libestdc.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Rename-GCC-s-libgcc-library-to-libegcc.patch"
+	
+	a=$(cat $gcc_directory/gcc/testsuite/gm2/projects/pim/run/pass/tower/advflex.c)
+	echo "'#include <stdint.h>" > $gcc_directory/gcc/testsuite/gm2/projects/pim/run/pass/tower/advflex.c
+	echo $a >> $gcc_directory/gcc/testsuite/gm2/projects/pim/run/pass/tower/advflex.c
 fi
 
 # Follow Debian's approach for removing hardcoded RPATH from binaries
