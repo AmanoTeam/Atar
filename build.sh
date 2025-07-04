@@ -212,7 +212,7 @@ if ! [ -f "${gcc_tarball}" ]; then
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Rename-GCC-s-libgcc-library-to-libegcc.patch"
 	
 	a=$(cat $gcc_directory/gcc/hwint.h)
-	echo "'#include <stdint.h>" > $gcc_directory/gcc/hwint.h
+	echo -e '#include <stdint.h>\n' > $gcc_directory/gcc/hwint.h
 	echo $a >> $gcc_directory/gcc/hwint.h
 fi
 
