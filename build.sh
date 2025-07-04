@@ -212,10 +212,10 @@ if ! [ -f "${gcc_tarball}" ]; then
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Rename-GCC-s-libgcc-library-to-libegcc.patch"
 	
 	a="$(cat $gcc_directory/gcc/hwint.h)"
-	echo -e '#if defined(__cplusplus)\n#include <stdint.h>\n#endif\n' > $gcc_directory/gcc/hwint.h
-	echo "${a}" >> $gcc_directory/gcc/hwint.h
+	#echo -e '#if defined(__cplusplus)\n#include <stdint.h>\n#endif\n' > $gcc_directory/gcc/hwint.h
+	#echo "${a}" >> $gcc_directory/gcc/hwint.h
 fi
-
+sed -i 's/CFLAGS-gengtype-lex.o += -DHOST_GENERATOR_FILE/CFLAGS-gengtype-lex.o += -DHOST_GENERATOR_FILE -include stdint.h/g' $gcc_directory/gcc/Makefile.in
 # Follow Debian's approach for removing hardcoded RPATH from binaries
 # https://wiki.debian.org/RpathIssue
 sed \
