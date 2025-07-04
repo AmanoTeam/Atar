@@ -222,6 +222,15 @@ sed \
 	"${gmp_directory}/configure" \
 	"${gcc_directory}/libsanitizer/configure"
 
+# Fix Autotools mistakenly detecting shared libraries as not supported on OpenBSD
+while read file; do
+	sed \
+		--in-place \
+		--regexp-extended \
+		's|test -f /usr/libexec/ld.so|true|g' \
+		"${file}"
+done <<< "$(find '/tmp' -type 'f' -name 'configure')"
+
 if ! [ -f "${lld_tarball}" ]; then
 	[ -d "${toolchain_directory}" ] || mkdir "${toolchain_directory}"
 	
@@ -501,7 +510,7 @@ for triplet in "${targets[@]}"; do
 		--disable-symvers \
 		--without-static-standard-libraries \
 		CFLAGS="${optflags}" \
-		CXXFLAGS="${optflags} -include stdint.h" \
+		CXXFLAGS="${optflags}" \
 		LDFLAGS="${linkflags}"
 	
 	declare CFLAGS_FOR_TARGET="${optflags} ${linkflags} -fPIC"
@@ -533,12 +542,12 @@ for triplet in "${targets[@]}"; do
 		ln --symbolic '../../bin/ld.lld' 'ld'
 	fi
 	
-	cd "${toolchain_directory}/${triplet}/lib"
-	
-	echo '/* OpenBSD does not have a separate libgcc_s.so library, so this file is just a dummy. */' > './libgcc_s.so.1'
-	
-	ln --symbolic './libestdc++.so' './libstdc++.so'
-	ln --symbolic './libestdc++.a' './libstdc++.a'
+	if ! (( is_native )); then
+		cd "${toolchain_directory}/${triplet}/lib"
+		
+		ln --symbolic './libestdc++.so' './libstdc++.so'
+		ln --symbolic './libestdc++.a' './libstdc++.a'
+	fi
 done
 
 # Delete libtool files and other unnecessary files GCC installs
@@ -567,10 +576,13 @@ if ! (( is_native )); then
 	
 	cp "${name}" "${toolchain_directory}/lib/${soname}"
 	
-	declare name=$(realpath $("${cc}" --print-file-name='libgcc_s.so.1'))
-	declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
-	
-	cp "${name}" "${toolchain_directory}/lib/${soname}"
+	# OpenBSD does not have a libgcc_s library
+	if [[ "${CROSS_COMPILE_TRIPLET}" != *'-openbsd'* ]]; then
+		declare name=$(realpath $("${cc}" --print-file-name='libgcc_s.so.1'))
+		declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
+		
+		cp "${name}" "${toolchain_directory}/lib/${soname}"
+	fi
 fi
 
 mkdir --parent "${share_directory}"

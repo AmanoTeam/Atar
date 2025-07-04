@@ -77,16 +77,16 @@ jobs:
       matrix:
         target: [
           # OpenBSD
-          # 'x86_64-unknown-openbsd',
-          # 'i386-unknown-openbsd',
-          # 'aarch64-unknown-openbsd',
-          # 'arm-unknown-openbsd',
+          'x86_64-unknown-openbsd',
+          'i386-unknown-openbsd',
+          'aarch64-unknown-openbsd',
+          'arm-unknown-openbsd',
           
           # Linux (glibc)
-          'x86_64-unknown-linux-gnu',
-          'i386-unknown-linux-gnu',
-          'arm-unknown-linux-gnueabihf',
-          'aarch64-unknown-linux-gnu'
+          # 'x86_64-unknown-linux-gnu',
+          # 'i386-unknown-linux-gnu',
+          # 'arm-unknown-linux-gnueabihf',
+          # 'aarch64-unknown-linux-gnu'
         ]
     steps:
     - uses: actions/checkout@main
