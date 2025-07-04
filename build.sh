@@ -39,7 +39,7 @@ declare -r lld_tarball='/tmp/lld.tar.xz'
 declare -r max_jobs='30'
 
 declare -r pieflags='-fPIE'
-declare -r optflags='-w -O2 -Xlinker --allow-multiple-definition'
+declare -r optflags='-w -O2'
 declare -r linkflags='-Xlinker -s'
 
 declare -ra targets=(
@@ -56,6 +56,10 @@ declare -ra targets=(
 	'powerpc64-unknown-openbsd'
 	'sparc64-unknown-openbsd'
 )
+
+declare -r PKG_CONFIG_PATH="${toolchain_directory}/lib/pkgconfig"
+
+export PKG_CONFIG_PATH
 
 declare build_type="${1}"
 
@@ -208,6 +212,10 @@ if ! [ -f "${gcc_tarball}" ]; then
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Disable-SONAME-versioning-for-all-target-libraries.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Change-GCC-s-C-standard-library-name-to-libestdc.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Rename-GCC-s-libgcc-library-to-libegcc.patch"
+	
+	if [[ "${CROSS_COMPILE_TRIPLET}" == *'-openbsd'* ]]; then
+		patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Fix-missing-stdint.h-include-when-compiling-host-tools-on-OpenBSD.patch"
+	fi
 fi
 
 # Follow Debian's approach for removing hardcoded RPATH from binaries
@@ -221,6 +229,22 @@ sed \
 	"${mpfr_directory}/configure" \
 	"${gmp_directory}/configure" \
 	"${gcc_directory}/libsanitizer/configure"
+
+# Fix Autotools mistakenly detecting shared libraries as not supported on OpenBSD
+while read file; do
+	sed \
+		--in-place \
+		--regexp-extended \
+		's|test -f /usr/libexec/ld.so|true|g' \
+		"${file}"
+done <<< "$(find '/tmp' -type 'f' -name 'configure')"
+
+# Force GCC and binutils to prefix host tools with the target triplet even in native builds
+sed \
+	--in-place \
+	's/test "$host_noncanonical" = "$target_noncanonical"/false/' \
+	"${gcc_directory}/configure" \
+	"${binutils_directory}/configure"
 
 if ! [ -f "${lld_tarball}" ]; then
 	[ -d "${toolchain_directory}" ] || mkdir "${toolchain_directory}"
@@ -266,8 +290,6 @@ if ! [ -f "${zstd_tarball}" ]; then
 		--extract \
 		--file="${zstd_tarball}"
 fi
-
-sudo touch '/usr/libexec/ld.so'
 
 [ -d "${gmp_directory}/build" ] || mkdir "${gmp_directory}/build"
 
@@ -367,6 +389,7 @@ if [[ "${CROSS_COMPILE_TRIPLET}" == *'-android'* ]]; then
 fi
 
 for triplet in "${targets[@]}"; do
+	declare extra_gcc_flags=''
 	declare extra_binutils_flags=''
 	declare require_lld='0'
 	
@@ -390,17 +413,22 @@ for triplet in "${targets[@]}"; do
 		--target="${triplet}" \
 		--prefix="${toolchain_directory}" \
 		--enable-plugins \
+		--enable-separate-code \
+		--enable-rosegment \
+		--enable-relro \
+		--enable-compressed-debug-sections='all' \
+		--enable-default-compressed-debug-sections \
 		--disable-gprofng \
 		--program-prefix="${triplet}-" \
 		--with-sysroot="${toolchain_directory}/${triplet}" \
 		--with-zstd="${toolchain_directory}" \
 		--without-static-standard-libraries \
 		${extra_binutils_flags} \
-		CFLAGS="${optflags} -I${toolchain_directory}/include -L${toolchain_directory}/lib" \
-		CXXFLAGS="${optflags} -I${toolchain_directory}/include -L${toolchain_directory}/lib" \
+		CFLAGS="${optflags}" \
+		CXXFLAGS="${optflags}" \
 		LDFLAGS="${linkflags}"
 	
-	make all --jobs > /dev/null
+	make all --jobs="${max_jobs}"
 	make install
 	
 	cd "$(mktemp --directory)"
@@ -435,17 +463,16 @@ for triplet in "${targets[@]}"; do
 		ln --symbolic './ld.lld' "./${triplet}-ld"
 	fi
 	
+	if ! (( is_native )); then
+		extra_gcc_flags+=" --with-cross-host=${CROSS_COMPILE_TRIPLET}"
+		extra_gcc_flags+=" --with-toolexeclibdir=${toolchain_directory}/${triplet}/lib/"
+	fi
+	
 	[ -d "${gcc_directory}/build" ] || mkdir "${gcc_directory}/build"
 	
 	cd "${gcc_directory}/build"
 	
 	rm --force --recursive ./*
-	
-	export \
-		am_cv_func_iconv=no \
-		ac_cv_header_magic_h=no
-	
-	export LD_LIBRARY_PATH=${toolchain_directory}-toolchain/lib
 	
 	../configure \
 		--host="${CROSS_COMPILE_TRIPLET}" \
@@ -459,7 +486,7 @@ for triplet in "${targets[@]}"; do
 		--with-zstd="${toolchain_directory}" \
 		--with-bugurl='https://github.com/AmanoTeam/Atar/issues' \
 		--with-gcc-major-version-only \
-		--with-pkgversion="Atar v1.0-${revision}" \
+		--with-pkgversion="Atar v1.1-${revision}" \
 		--with-sysroot="${toolchain_directory}/${triplet}" \
 		--with-native-system-header-dir='/include' \
 		--with-default-libstdcxx-abi='new' \
@@ -476,18 +503,17 @@ for triplet in "${targets[@]}"; do
 		--enable-shared \
 		--enable-threads='posix' \
 		--enable-languages='c,c++' \
-		--enable-cpp \
 		--enable-default-pie \
 		--enable-default-ssp \
 		--enable-libssp \
 		--enable-standard-branch-protection \
-		--enable-wchar_t \
 		--enable-plugin \
 		--enable-lto \
 		--enable-libstdcxx-time='yes' \
 		--enable-cxx-flags="${linkflags}" \
 		--enable-host-pie \
 		--enable-host-shared \
+		--enable-host-bind-now \
 		--with-specs="-Xlinker --undefined-version %{!fno-plt:%{!fplt:-fno-plt}}" \
 		--without-headers \
 		--disable-libsanitizer \
@@ -500,8 +526,9 @@ for triplet in "${targets[@]}"; do
 		--disable-werror \
 		--disable-symvers \
 		--without-static-standard-libraries \
+		${extra_gcc_flags} \
 		CFLAGS="${optflags}" \
-		CXXFLAGS="${optflags} -include stdint.h" \
+		CXXFLAGS="${optflags}" \
 		LDFLAGS="${linkflags}"
 	
 	declare CFLAGS_FOR_TARGET="${optflags} ${linkflags} -fPIC"
@@ -533,12 +560,20 @@ for triplet in "${targets[@]}"; do
 		ln --symbolic '../../bin/ld.lld' 'ld'
 	fi
 	
-	cd "${toolchain_directory}/${triplet}/lib"
+	cd "${toolchain_directory}/lib/bfd-plugins"
 	
-	echo '/* OpenBSD does not have a separate libgcc_s.so library, so this file is just a dummy. */' > './libgcc_s.so.1'
+	if ! [ -f './liblto_plugin.so' ]; then
+		ln --symbolic "../../libexec/gcc/${triplet}/"*'/liblto_plugin.so' './'
+	fi
 	
-	ln --symbolic './libestdc++.so' './libstdc++.so'
-	ln --symbolic './libestdc++.a' './libstdc++.a'
+	cd "${toolchain_directory}/${triplet}/lib64" 2>/dev/null || cd "${toolchain_directory}/${triplet}/lib"
+	
+	[ -f './libiberty.a' ] && unlink './libiberty.a'
+	
+	if ! (( is_native )); then
+		ln --symbolic './libestdc++.so' './libstdc++.so'
+		ln --symbolic './libestdc++.a' './libstdc++.a'
+	fi
 done
 
 # Delete libtool files and other unnecessary files GCC installs
@@ -562,15 +597,32 @@ fi
 if ! (( is_native )); then
 	[ -d "${toolchain_directory}/lib" ] || mkdir "${toolchain_directory}/lib"
 	
+	# libstdc++
 	declare name=$(realpath $("${cc}" --print-file-name='libstdc++.so'))
+	
+	# libestdc++
+	if ! [ -f "${name}" ]; then
+		declare name=$(realpath $("${cc}" --print-file-name='libestdc++.so'))
+	fi
+	
 	declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
 	
 	cp "${name}" "${toolchain_directory}/lib/${soname}"
 	
-	declare name=$(realpath $("${cc}" --print-file-name='libgcc_s.so.1'))
-	declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
-	
-	cp "${name}" "${toolchain_directory}/lib/${soname}"
+	# OpenBSD does not have a libgcc library
+	if [[ "${CROSS_COMPILE_TRIPLET}" != *'-openbsd'* ]]; then
+		# libgcc_s
+		declare name=$(realpath $("${cc}" --print-file-name='libgcc_s.so.1'))
+		
+		# libegcc
+		if ! [ -f "${name}" ]; then
+			declare name=$(realpath $("${cc}" --print-file-name='libegcc.so'))
+		fi
+		
+		declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
+		
+		cp "${name}" "${toolchain_directory}/lib/${soname}"
+	fi
 fi
 
 mkdir --parent "${share_directory}"
