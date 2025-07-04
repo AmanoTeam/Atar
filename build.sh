@@ -2,14 +2,14 @@
 
 set -eu
 
-export LD_LIBRARY_PATH=${toolchain_directory}-toolchain/lib
-
 declare -r workdir="${PWD}"
 
 declare -r revision="$(git rev-parse --short HEAD)"
 
 declare -r toolchain_directory='/tmp/atar'
 declare -r share_directory="${toolchain_directory}/usr/local/share/atar"
+
+export LD_LIBRARY_PATH=${toolchain_directory}-toolchain/lib
 
 declare -r environment="LD_LIBRARY_PATH=${toolchain_directory}/lib PATH=${PATH}:${toolchain_directory}/bin"
 
