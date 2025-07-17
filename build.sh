@@ -58,8 +58,22 @@ declare -ra targets=(
 )
 
 declare -r PKG_CONFIG_PATH="${toolchain_directory}/lib/pkgconfig"
+declare -r PKG_CONFIG_LIBDIR="${PKG_CONFIG_PATH}"
+declare -r PKG_CONFIG_SYSROOT_DIR="${toolchain_directory}"
 
-export PKG_CONFIG_PATH
+declare -r pkg_cv_ZSTD_CFLAGS="-I${toolchain_directory}/include"
+declare -r pkg_cv_ZSTD_LIBS="-L${toolchain_directory}/lib -lzstd"
+declare -r ZSTD_CFLAGS="-I${toolchain_directory}/include"
+declare -r ZSTD_LIBS="-L${toolchain_directory}/lib -lzstd"
+
+export \
+	PKG_CONFIG_PATH \
+	PKG_CONFIG_LIBDIR \
+	PKG_CONFIG_SYSROOT_DIR \
+	pkg_cv_ZSTD_CFLAGS \
+	pkg_cv_ZSTD_LIBS \
+	ZSTD_CFLAGS \
+	ZSTD_LIBS
 
 declare build_type="${1}"
 
@@ -212,10 +226,7 @@ if ! [ -f "${gcc_tarball}" ]; then
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Disable-SONAME-versioning-for-all-target-libraries.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Change-GCC-s-C-standard-library-name-to-libestdc.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Rename-GCC-s-libgcc-library-to-libegcc.patch"
-	
-	if [[ "${CROSS_COMPILE_TRIPLET}" == *'-openbsd'* ]]; then
-		patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Fix-missing-stdint.h-include-when-compiling-host-tools-on-OpenBSD.patch"
-	fi
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Fix-missing-stdint.h-include-when-compiling-host-tools-on-OpenBSD.patch"
 fi
 
 # Follow Debian's approach for removing hardcoded RPATH from binaries
@@ -417,9 +428,10 @@ for triplet in "${targets[@]}"; do
 		--enable-rosegment \
 		--enable-relro \
 		--enable-compressed-debug-sections='all' \
-		--enable-default-compressed-debug-sections \
+		--enable-default-compressed-debug-sections-algorithm='zstd' \
 		--disable-gprofng \
-		--program-prefix="${triplet}-" \
+		--disable-default-execstack \
+		--without-static-standard-libraries \
 		--with-sysroot="${toolchain_directory}/${triplet}" \
 		--with-zstd="${toolchain_directory}" \
 		--without-static-standard-libraries \
@@ -552,6 +564,8 @@ for triplet in "${targets[@]}"; do
 		all --jobs="${max_jobs}"
 	make install
 	
+	rm "${toolchain_directory}/bin/${triplet}-${triplet}-"* || true
+	
 	cd "${toolchain_directory}/${triplet}/bin"
 	
 	ln --symbolic '../../bin/ld.lld' 'ld.lld'
@@ -573,6 +587,14 @@ for triplet in "${targets[@]}"; do
 	if ! (( is_native )); then
 		ln --symbolic './libestdc++.so' './libstdc++.so'
 		ln --symbolic './libestdc++.a' './libstdc++.a'
+	fi
+	
+	if [ "${CROSS_COMPILE_TRIPLET}" = "${triplet}" ]; then
+		ln \
+			--symbolic \
+			--relative \
+			"${toolchain_directory}/${triplet}/include/c++" \
+			"${toolchain_directory}/include"
 	fi
 done
 
