@@ -443,6 +443,8 @@ unlink "${toolchain_directory}/lib/libz.a"
 cd "${zstd_directory}/.build"
 rm --force --recursive ./*
 
+declare cmake_flags=''
+
 if [[ "${CROSS_COMPILE_TRIPLET}" = *'-darwin'* ]]; then
 	cmake_flags+=' -DCMAKE_SYSTEM_NAME=Darwin'
 fi
