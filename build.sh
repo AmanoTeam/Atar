@@ -31,6 +31,9 @@ declare -r gcc_major='15'
 declare -r gcc_tarball='/tmp/gcc.tar.xz'
 declare -r gcc_directory="/tmp/gcc-releases-gcc-${gcc_major}"
 
+declare -r zlib_tarball='/tmp/zlib.tar.gz'
+declare -r zlib_directory='/tmp/zlib-develop'
+
 declare -r zstd_tarball='/tmp/zstd.tar.gz'
 declare -r zstd_directory='/tmp/zstd-dev'
 
