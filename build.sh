@@ -26,10 +26,10 @@ declare -r isl_directory='/tmp/isl-0.27'
 declare -r binutils_tarball='/tmp/binutils.tar.xz'
 declare -r binutils_directory='/tmp/binutils'
 
-declare -r gcc_major='15'
+declare -r gcc_major='16'
 
 declare -r gcc_tarball='/tmp/gcc.tar.xz'
-declare -r gcc_directory="/tmp/gcc-releases-gcc-${gcc_major}"
+declare -r gcc_directory='/tmp/gcc-master'
 
 declare -r zlib_tarball='/tmp/zlib.tar.gz'
 declare -r zlib_directory='/tmp/zlib-develop'
@@ -207,7 +207,7 @@ fi
 
 if ! [ -f "${gcc_tarball}" ]; then
 	curl \
-		--url 'https://github.com/gcc-mirror/gcc/archive/releases/gcc-15.tar.gz' \
+		--url 'https://github.com/gcc-mirror/gcc/archive/master.tar.gz' \
 		--retry '30' \
 		--retry-all-errors \
 		--retry-delay '0' \
@@ -225,25 +225,26 @@ if ! [ -f "${gcc_tarball}" ]; then
 		sed \
 			--in-place \
 			's/$$ORIGIN/@loader_path/g' \
-			"${workdir}/submodules/obggcc/patches/0001-Add-relative-RPATHs-to-GCC-host-tools.patch"
+			"${workdir}/submodules/obggcc/patches/0007-Add-relative-RPATHs-to-GCC-host-tools.patch"
 	fi
 	
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-gcc-15.patch"
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-Disable-libfunc-support-for-hppa.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-GCC-16.patch"
+	# patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-Disable-libfunc-support-for-hppa.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-Fix-libatomic-build-on-ARM-with-IFUNC-enabled.patch"
 	
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Fix-libgcc-build-on-arm.patch"
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Change-the-default-language-version-for-C-compilatio.patch"
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Turn-Wimplicit-int-back-into-an-warning.patch"
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Turn-Wint-conversion-back-into-an-warning.patch"
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Revert-GCC-change-about-turning-Wimplicit-function-d.patch"
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Turn-Wincompatible-pointer-types-back-into-an-warnin.patch"
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Add-relative-RPATHs-to-GCC-host-tools.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Turn-Wimplicit-function-declaration-back-into-an-warning.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0003-Change-the-default-language-version-for-C-compilation-from-std-gnu23-to-std-gnu17.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0004-Turn-Wimplicit-int-back-into-an-warning.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0005-Turn-Wint-conversion-back-into-an-warning.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0006-Turn-Wincompatible-pointer-types-back-into-an-warning.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0007-Add-relative-RPATHs-to-GCC-host-tools.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0008-Add-ARM-and-ARM64-drivers-to-OpenBSD-host-tools.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0009-Fix-missing-stdint.h-include-when-compiling-host-tools-on-OpenBSD.patch"
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0011-Revert-configure-Always-add-pre-installed-header-directories-to-search-path.patch"
 	
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Disable-SONAME-versioning-for-all-target-libraries.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Change-GCC-s-C-standard-library-name-to-libestdc.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/pino/patches/0001-Rename-GCC-s-libgcc-library-to-libegcc.patch"
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Fix-missing-stdint.h-include-when-compiling-host-tools-on-OpenBSD.patch"
 fi
 
 # Follow Debian's approach to remove hardcoded RPATHs from binaries
@@ -681,6 +682,12 @@ for triplet in "${targets[@]}"; do
 	fi
 	
 	cd "${toolchain_directory}/${triplet}/lib64" 2>/dev/null || cd "${toolchain_directory}/${triplet}/lib"
+	
+	if [[ "$(basename "${PWD}")" = 'lib64' ]]; then
+		mv ./* '../lib' || true
+		rmdir "${PWD}"
+		cd '../lib'
+	fi
 	
 	[ -f './libiberty.a' ] && unlink './libiberty.a'
 	
