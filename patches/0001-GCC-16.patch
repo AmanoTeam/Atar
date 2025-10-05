@@ -1,4 +1,4 @@
-From 45527dedf28a2ec9dd8a7fb0bf546c2a7f0ab9d5 Mon Sep 17 00:00:00 2001
+From fe8bbf127dcc75ca2ebb3e4b518b40fa2181599d Mon Sep 17 00:00:00 2001
 From: Kartatz <105828205+Kartatz@users.noreply.github.com>
 Date: Sun, 5 Oct 2025 16:10:32 -0300
 Subject: [PATCH] GCC 16
@@ -3030,7 +3030,7 @@ index f7bead67b..9da00ef34 100644
    if (execsize == 0 || execfd == -1)
      {
 diff --git a/libgcc/config.host b/libgcc/config.host
-index 82ea1772f..cea4318e0 100644
+index 82ea1772f..dcc1e5062 100644
 --- a/libgcc/config.host
 +++ b/libgcc/config.host
 @@ -316,6 +316,9 @@ case ${host} in
@@ -3039,7 +3039,7 @@ index 82ea1772f..cea4318e0 100644
    tmake_file="$tmake_file t-crtstuff-pic t-libgcc-pic t-eh-dw2-dip"
 +  tmake_file="$tmake_file t-slibgcc t-slibgcc-gld t-slibgcc-elf-ver"
 +  tmake_file="$tmake_file t-slibgcc-libgcc"
-+  extra_parts="crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o"
++  # extra_parts="crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o"
    case ${target_thread_file} in
      posix)
        tmake_file="$tmake_file t-openbsd-thread"
