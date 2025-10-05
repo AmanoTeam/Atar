@@ -620,7 +620,6 @@ for triplet in "${targets[@]}"; do
 		--enable-standard-branch-protection \
 		--enable-plugin \
 		--enable-lto \
-		--enable-libstdcxx-time='yes' \
 		--enable-cxx-flags="${linkflags}" \
 		--enable-host-pie \
 		--enable-host-shared \
