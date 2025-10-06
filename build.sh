@@ -46,13 +46,13 @@ declare -r ccflags='-w -O2'
 declare -r linkflags='-Xlinker -s'
 
 declare -ra targets=(
-	'hppa-unknown-openbsd'
+	# 'hppa-unknown-openbsd'
 	# 'x86_64-unknown-openbsd'
 	# 'mips64-unknown-openbsd'
 	# 'mips64el-unknown-openbsd'
 	# 'riscv64-unknown-openbsd'
 	# 'aarch64-unknown-openbsd'
-	# 'arm-unknown-openbsd'
+	'arm-unknown-openbsd'
 	# 'i386-unknown-openbsd'
 	# 'alpha-unknown-openbsd'
 	# 'powerpc-unknown-openbsd'
@@ -161,7 +161,7 @@ fi
 
 if ! [ -f "${isl_tarball}" ]; then
 	curl \
-		--url 'https://libisl.sourceforge.io/isl-0.27.tar.xz' \
+		--url 'https://sourceforge.net/projects/libisl/files/isl-0.27.tar.xz' \
 		--retry '30' \
 		--retry-all-errors \
 		--retry-delay '0' \
@@ -229,8 +229,6 @@ if ! [ -f "${gcc_tarball}" ]; then
 	fi
 	
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-GCC-16.patch"
-	# patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-Disable-libfunc-support-for-hppa.patch"
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-Fix-libatomic-build-on-ARM-with-IFUNC-enabled.patch"
 	
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Turn-Wimplicit-function-declaration-back-into-an-warning.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0003-Change-the-default-language-version-for-C-compilation-from-std-gnu23-to-std-gnu17.patch"
@@ -613,7 +611,6 @@ for triplet in "${targets[@]}"; do
 		--enable-__cxa_atexit \
 		--enable-cet='auto' \
 		--enable-checking='release' \
-		--enable-gnu-indirect-function \
 		--enable-gnu-unique-object \
 		--enable-libstdcxx-backtrace \
 		--enable-libstdcxx-filesystem-ts \
@@ -635,6 +632,7 @@ for triplet in "${targets[@]}"; do
 		--with-specs="${specs}" \
 		--without-headers \
 		--with-pic \
+		--disable-gnu-indirect-function \
 		--disable-c++-tools \
 		--disable-libsanitizer \
 		--disable-bootstrap \
@@ -695,6 +693,7 @@ for triplet in "${targets[@]}"; do
 	if ! (( is_native )); then
 		ln --symbolic './libestdc++.so' './libstdc++.so'
 		ln --symbolic './libestdc++.a' './libstdc++.a'
+		ln --symbolic './libegcc.so' './libgcc_s.so.1'
 	fi
 	
 	if [ "${CROSS_COMPILE_TRIPLET}" = "${triplet}" ]; then
@@ -739,20 +738,17 @@ if ! (( is_native )) && [[ "${CROSS_COMPILE_TRIPLET}" != *'-darwin'* ]]; then
 	
 	cp "${name}" "${toolchain_directory}/lib/${soname}"
 	
-	# OpenBSD does not have a libgcc library
-	if [[ "${CROSS_COMPILE_TRIPLET}" != *'-openbsd'* ]]; then
-		# libgcc_s
-		declare name=$(realpath $("${cc}" --print-file-name='libgcc_s.so.1'))
-		
-		# libegcc
-		if ! [ -f "${name}" ]; then
-			declare name=$(realpath $("${cc}" --print-file-name='libegcc.so'))
-		fi
-		
-		declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
-		
-		cp "${name}" "${toolchain_directory}/lib/${soname}"
+	# libgcc_s
+	declare name=$(realpath $("${cc}" --print-file-name='libgcc_s.so.1'))
+	
+	# libegcc
+	if ! [ -f "${name}" ]; then
+		declare name=$(realpath $("${cc}" --print-file-name='libegcc.so'))
 	fi
+	
+	declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
+	
+	cp "${name}" "${toolchain_directory}/lib/${soname}"
 fi
 
 mkdir --parent "${share_directory}"
