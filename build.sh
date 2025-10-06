@@ -568,6 +568,8 @@ for triplet in "${targets[@]}"; do
 	
 	env ${args} "${triplet}-strip" "${toolchain_directory}/${triplet}/lib/"*'.so' || true
 	
+	rm --force "${toolchain_directory}/${triplet}/include/sys/auxv.h"
+	
 	cd "${toolchain_directory}/bin"
 	
 	ln --symbolic './ld.lld' "./${triplet}-ld.lld"
@@ -691,13 +693,10 @@ for triplet in "${targets[@]}"; do
 	
 	[ -f './libiberty.a' ] && unlink './libiberty.a'
 	
-	unlink './libgcc_s.so' && echo 'GROUP ( libgcc_s.so.1 libgcc.a )' > './libgcc_s.so'
-	
 	if ! (( is_native )); then
 		ln --symbolic './libestdc++.so' './libstdc++.so'
 		ln --symbolic './libestdc++.a' './libstdc++.a'
 		ln --symbolic './libegcc.so' './libgcc_s.so.1'
-		ln --symbolic './libgcc_s.so' './libgcc.so'
 	fi
 	
 	if [ "${CROSS_COMPILE_TRIPLET}" = "${triplet}" ]; then
