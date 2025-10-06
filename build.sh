@@ -46,8 +46,8 @@ declare -r ccflags='-w -O2'
 declare -r linkflags='-Xlinker -s'
 
 declare -ra targets=(
-	# 'hppa-unknown-openbsd'
-	'x86_64-unknown-openbsd'
+	'hppa-unknown-openbsd'
+	# 'x86_64-unknown-openbsd'
 	# 'mips64-unknown-openbsd'
 	# 'mips64el-unknown-openbsd'
 	# 'riscv64-unknown-openbsd'
@@ -560,6 +560,7 @@ for triplet in "${targets[@]}"; do
 	cp --recursive "${sysroot_directory}" "${toolchain_directory}"
 	
 	rm --force --recursive ./*
+	rm --force "${toolchain_directory}/${triplet}/lib/"*'.a'
 	
 	cd "${toolchain_directory}/bin"
 	
