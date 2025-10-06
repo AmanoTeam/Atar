@@ -483,6 +483,12 @@ if [[ "${CROSS_COMPILE_TRIPLET}" == *'-haiku' ]]; then
 	export ac_cv_c_bigendian='no'
 fi
 
+declare args=''
+
+if (( is_native )); then
+	args+="${environment}"
+fi
+
 for triplet in "${targets[@]}"; do
 	declare extra_gcc_flags=''
 	declare extra_binutils_flags=''
@@ -561,6 +567,8 @@ for triplet in "${targets[@]}"; do
 	
 	rm --force --recursive ./*
 	rm --force "${toolchain_directory}/${triplet}/lib/"*'.a'
+	
+	env ${args} "${triplet}-strip" "${toolchain_directory}/${triplet}/lib/"*'.so'
 	
 	cd "${toolchain_directory}/bin"
 	
@@ -649,12 +657,6 @@ for triplet in "${targets[@]}"; do
 	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80196#c12
 	if ! (( is_native )); then
 		CXXFLAGS_FOR_TARGET+=' -nostdinc++'
-	fi
-	
-	declare args=''
-	
-	if (( is_native )); then
-		args+="${environment}"
 	fi
 	
 	env ${args} make \
