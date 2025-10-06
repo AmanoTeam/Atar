@@ -1,4 +1,4 @@
-From fe8bbf127dcc75ca2ebb3e4b518b40fa2181599d Mon Sep 17 00:00:00 2001
+From b63cf5fdb965aa9324d88f58b66c4069f6561933 Mon Sep 17 00:00:00 2001
 From: Kartatz <105828205+Kartatz@users.noreply.github.com>
 Date: Sun, 5 Oct 2025 16:10:32 -0300
 Subject: [PATCH] GCC 16
@@ -29,7 +29,7 @@ Subject: [PATCH] GCC 16
  gcc/config/mips/mips.h                        |   5 +-
  gcc/config/mips/openbsd.h                     | 227 ++++++++++
  gcc/config/openbsd-libpthread.h               |   2 +-
- gcc/config/openbsd.h                          |   9 +-
+ gcc/config/openbsd.h                          |  15 +-
  gcc/config/openbsd.opt                        |   3 +
  gcc/config/pa/pa-openbsd.h                    |   9 +-
  gcc/config/pa/pa.cc                           |   4 +
@@ -58,13 +58,13 @@ Subject: [PATCH] GCC 16
  libbacktrace/configure                        |   4 +-
  libffi/include/Makefile.in                    |   2 +-
  libffi/src/closures.c                         |   2 +
- libgcc/config.host                            |  32 +-
+ libgcc/config.host                            |  31 +-
  libgcc/config/arm/unwind-arm.h                |   2 +-
  libgcc/config/rs6000/t-openbsd                |  12 +
  libgcc/libgcc2.c                              |   1 +
  libgcc/unwind-dw2.c                           |  27 ++
  .../config/os/bsd/openbsd/ctype_base.h        |  19 +-
- 60 files changed, 1911 insertions(+), 124 deletions(-)
+ 60 files changed, 1916 insertions(+), 124 deletions(-)
  create mode 100644 gcc/config/aarch64/openbsd.h
  create mode 100644 gcc/config/arm/openbsd.h
  create mode 100644 gcc/config/arm/openbsd1.h
@@ -1548,7 +1548,7 @@ index 81ccb1c61..326e20ea8 100644
 +#define OBSD_LIB_SPEC "%{pthread:-lpthread%{!shared:%{p|pg:_p}}} %{!shared:-lc%{p:_p}%{!p:%{pg:_p}}}"
  
 diff --git a/gcc/config/openbsd.h b/gcc/config/openbsd.h
-index bb1bae3a5..5ac2cd0c7 100644
+index bb1bae3a5..7d73a87ea 100644
 --- a/gcc/config/openbsd.h
 +++ b/gcc/config/openbsd.h
 @@ -40,6 +40,10 @@ along with GCC; see the file COPYING3.  If not see
@@ -1574,12 +1574,18 @@ index bb1bae3a5..5ac2cd0c7 100644
  #endif
  
  #undef LIB_SPEC
-@@ -274,5 +278,4 @@ do {									 \
+@@ -274,5 +278,10 @@ do {									 \
  
  /* Storage layout.  */
  
 -
  #define HAVE_ENABLE_EXECUTE_STACK
++
++/* Use --as-needed -lgcc_s for eh support.  */
++#ifdef HAVE_LD_AS_NEEDED
++#define USE_LD_AS_NEEDED 1
++#endif
++
 diff --git a/gcc/config/openbsd.opt b/gcc/config/openbsd.opt
 index 4f594057e..9ff9673f4 100644
 --- a/gcc/config/openbsd.opt
@@ -3030,20 +3036,19 @@ index f7bead67b..9da00ef34 100644
    if (execsize == 0 || execfd == -1)
      {
 diff --git a/libgcc/config.host b/libgcc/config.host
-index 82ea1772f..dcc1e5062 100644
+index 82ea1772f..f0b539053 100644
 --- a/libgcc/config.host
 +++ b/libgcc/config.host
-@@ -316,6 +316,9 @@ case ${host} in
+@@ -316,6 +316,8 @@ case ${host} in
    ;;
  *-*-openbsd*)
    tmake_file="$tmake_file t-crtstuff-pic t-libgcc-pic t-eh-dw2-dip"
 +  tmake_file="$tmake_file t-slibgcc t-slibgcc-gld t-slibgcc-elf-ver"
 +  tmake_file="$tmake_file t-slibgcc-libgcc"
-+  # extra_parts="crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o"
    case ${target_thread_file} in
      posix)
        tmake_file="$tmake_file t-openbsd-thread"
-@@ -416,6 +419,14 @@ aarch64*-*-netbsd*)
+@@ -416,6 +418,14 @@ aarch64*-*-netbsd*)
  	md_unwind_def_header=aarch64/aarch64-unwind-def.h
  	md_unwind_header=aarch64/aarch64-unwind.h
  	;;
@@ -3058,7 +3063,7 @@ index 82ea1772f..dcc1e5062 100644
  aarch64*-*-fuchsia*)
  	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
  	tmake_file="${tmake_file} ${cpu_type}/t-lse t-slibgcc-libgcc"
-@@ -542,8 +553,13 @@ arm*-*-netbsdelf*)
+@@ -542,8 +552,13 @@ arm*-*-netbsdelf*)
  	    ;;
  	esac
  	;;
@@ -3074,7 +3079,7 @@ index 82ea1772f..dcc1e5062 100644
  	tmake_file="${tmake_file} arm/t-elf arm/t-bpabi arm/t-linux-eabi t-slibgcc-libgcc"
  	tm_file="$tm_file arm/bpabi-lib.h"
  	unwind_header=config/arm/unwind-arm.h
-@@ -1059,6 +1075,12 @@ microblaze*-*-rtems*)
+@@ -1059,6 +1074,12 @@ microblaze*-*-rtems*)
  	;;
  mips*-*-netbsd*)			# NetBSD/mips, either endian.
  	;;
@@ -3087,7 +3092,7 @@ index 82ea1772f..dcc1e5062 100644
  mips*-*-linux*)				# Linux MIPS, either endian.
  	extra_parts="$extra_parts crtfastmath.o"
  	tmake_file="${tmake_file} t-crtfm"
-@@ -1238,6 +1260,9 @@ powerpc*-*-freebsd*)
+@@ -1238,6 +1259,9 @@ powerpc*-*-freebsd*)
  powerpc-*-netbsd*)
  	tmake_file="$tmake_file rs6000/t-netbsd rs6000/t-crtstuff"
  	;;
@@ -3097,7 +3102,7 @@ index 82ea1772f..dcc1e5062 100644
  powerpc-*-eabisimaltivec*)
  	tmake_file="${tmake_file} rs6000/t-ppccomm rs6000/t-crtstuff t-crtstuff-pic t-fdpbit"
  	extra_parts="$extra_parts crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o ecrti.o ecrtn.o ncrti.o ncrtn.o"
-@@ -1354,6 +1379,9 @@ riscv*-*-freebsd*)
+@@ -1354,6 +1378,9 @@ riscv*-*-freebsd*)
  	tmake_file="${tmake_file} riscv/t-crtstuff riscv/t-softfp${host_address} t-softfp riscv/t-elf riscv/t-elf${host_address} t-slibgcc-libgcc"
  	extra_parts="$extra_parts crtbegin.o crtend.o crti.o crtn.o crtendS.o crtbeginT.o"
  	;;
