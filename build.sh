@@ -674,6 +674,7 @@ for triplet in "${targets[@]}"; do
 		ln --symbolic '../../bin/ld.lld' 'ld'
 	fi
 	
+	mkdir -p "${toolchain_directory}/lib/bfd-plugins" || true
 	cd "${toolchain_directory}/lib/bfd-plugins"
 	
 	if ! [ -f './liblto_plugin.so' ]; then
