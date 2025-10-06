@@ -619,7 +619,7 @@ for triplet in "${targets[@]}"; do
 		--with-libstdcxx-lock-policy='auto' \
 		--enable-shared \
 		--enable-threads='posix' \
-		--enable-languages='c,c++' \
+		--enable-languages='c,c++,jit' \
 		--enable-default-pie \
 		--enable-default-ssp \
 		--enable-libssp \
