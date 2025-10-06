@@ -1,4 +1,4 @@
-From b63cf5fdb965aa9324d88f58b66c4069f6561933 Mon Sep 17 00:00:00 2001
+From 2aa06c311dfb3c89ef367e1039c63f970eff96b9 Mon Sep 17 00:00:00 2001
 From: Kartatz <105828205+Kartatz@users.noreply.github.com>
 Date: Sun, 5 Oct 2025 16:10:32 -0300
 Subject: [PATCH] GCC 16
@@ -20,7 +20,7 @@ Subject: [PATCH] GCC 16
  gcc/config/alpha/alpha.opt                    |   4 +
  gcc/config/alpha/openbsd.h                    |  22 +
  gcc/config/arm/arm.h                          |   2 +-
- gcc/config/arm/openbsd.h                      | 250 +++++++++++
+ gcc/config/arm/openbsd.h                      | 256 +++++++++++
  gcc/config/arm/openbsd1.h                     |  26 ++
  gcc/config/exec-stack.h                       |  40 ++
  gcc/config/i386/i386.cc                       |   4 +
@@ -29,7 +29,7 @@ Subject: [PATCH] GCC 16
  gcc/config/mips/mips.h                        |   5 +-
  gcc/config/mips/openbsd.h                     | 227 ++++++++++
  gcc/config/openbsd-libpthread.h               |   2 +-
- gcc/config/openbsd.h                          |  15 +-
+ gcc/config/openbsd.h                          |   9 +-
  gcc/config/openbsd.opt                        |   3 +
  gcc/config/pa/pa-openbsd.h                    |   9 +-
  gcc/config/pa/pa.cc                           |   4 +
@@ -878,10 +878,10 @@ index 2e9d678d3..c85057815 100644
  # define MCPU_MTUNE_NATIVE_FUNCTIONS			\
 diff --git a/gcc/config/arm/openbsd.h b/gcc/config/arm/openbsd.h
 new file mode 100644
-index 000000000..57893f920
+index 000000000..bae6e74fd
 --- /dev/null
 +++ b/gcc/config/arm/openbsd.h
-@@ -0,0 +1,250 @@
+@@ -0,0 +1,256 @@
 +/* Definitions of target machine for GNU compiler, OpenBSD/arm ELF version.
 +   Copyright (C) 2002 Free Software Foundation, Inc.
 +   Contributed by Wasabi Systems, Inc.
@@ -1132,6 +1132,12 @@ index 000000000..57893f920
 +    if (opts->x_unaligned_access)                                       \
 +        opts->x_unaligned_access = 0;                                   \
 +} while (0)
++
++/* Use --as-needed -lgcc_s for eh support.  */
++#ifdef HAVE_LD_AS_NEEDED
++#define USE_LD_AS_NEEDED 1
++#endif
++
 diff --git a/gcc/config/arm/openbsd1.h b/gcc/config/arm/openbsd1.h
 new file mode 100644
 index 000000000..01e667601
@@ -1548,7 +1554,7 @@ index 81ccb1c61..326e20ea8 100644
 +#define OBSD_LIB_SPEC "%{pthread:-lpthread%{!shared:%{p|pg:_p}}} %{!shared:-lc%{p:_p}%{!p:%{pg:_p}}}"
  
 diff --git a/gcc/config/openbsd.h b/gcc/config/openbsd.h
-index bb1bae3a5..7d73a87ea 100644
+index bb1bae3a5..5ac2cd0c7 100644
 --- a/gcc/config/openbsd.h
 +++ b/gcc/config/openbsd.h
 @@ -40,6 +40,10 @@ along with GCC; see the file COPYING3.  If not see
@@ -1574,18 +1580,12 @@ index bb1bae3a5..7d73a87ea 100644
  #endif
  
  #undef LIB_SPEC
-@@ -274,5 +278,10 @@ do {									 \
+@@ -274,5 +278,4 @@ do {									 \
  
  /* Storage layout.  */
  
 -
  #define HAVE_ENABLE_EXECUTE_STACK
-+
-+/* Use --as-needed -lgcc_s for eh support.  */
-+#ifdef HAVE_LD_AS_NEEDED
-+#define USE_LD_AS_NEEDED 1
-+#endif
-+
 diff --git a/gcc/config/openbsd.opt b/gcc/config/openbsd.opt
 index 4f594057e..9ff9673f4 100644
 --- a/gcc/config/openbsd.opt
