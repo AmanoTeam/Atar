@@ -568,7 +568,7 @@ for triplet in "${targets[@]}"; do
 	rm --force --recursive ./*
 	rm --force "${toolchain_directory}/${triplet}/lib/"*'.a'
 	
-	env ${args} "${triplet}-strip" "${toolchain_directory}/${triplet}/lib/"*'.so'
+	env ${args} "${triplet}-strip" "${toolchain_directory}/${triplet}/lib/"*'.so.'*
 	
 	cd "${toolchain_directory}/bin"
 	
