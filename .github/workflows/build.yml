@@ -258,7 +258,8 @@ jobs:
             source "${DARWIN_HOME}/usr/local/share/darwin/autotools/${{ matrix.target }}.sh"
         fi
         
-        bash './build.sh' '${{ matrix.target }}'
+        echo "CROSS_COMPILE_TRIPLET=${CROSS_COMPILE_TRIPLET}" >> "${GITHUB_ENV}"
+        bash './build.sh' "${CROSS_COMPILE_TRIPLET}"
     - name: Create logs
       if: always()
       run: |
@@ -279,14 +280,15 @@ jobs:
             /tmp/logs.tar.xz
     - name: Generate tarball
       run: |
-        declare tarball_filename='/tmp/${{ matrix.target }}.tar.xz'
+        declare tarball_filename='/tmp/${{ env.CROSS_COMPILE_TRIPLET }}.tar.xz'
         tar --directory='/tmp' --create --file=- 'atar' | xz --threads='0' --compress -9 > "${tarball_filename}"
         sha256sum "${tarball_filename}" | sed 's|/tmp/||' > "${tarball_filename}.sha256"
     - name: Upload artifact
       uses: actions/upload-artifact@main
       with:
-        name: ${{ matrix.target }}
+        name: ${{ env.CROSS_COMPILE_TRIPLET }}
         if-no-files-found: error
         path: |
-          /tmp/${{ matrix.target }}.tar.xz
-          /tmp/${{ matrix.target }}.tar.xz.sha256
+          /tmp/${{ env.CROSS_COMPILE_TRIPLET }}.tar.xz
+          /tmp/${{ env.CROSS_COMPILE_TRIPLET }}.tar.xz.sha256
+   
