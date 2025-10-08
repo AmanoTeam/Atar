@@ -763,34 +763,17 @@ for triplet in "${targets[@]}"; do
 		ln --symbolic --relative './ldscripts' './static'
 	fi
 	
-	for library in "${toolchain_directory}/${triplet}/lib/lib"*.{so,a,1,spec}; do
-		declare name="$(basename "${library}")"
-		
-		if [[ "${name}" = *'*'* ]]; then
-			continue
-		fi
-		
-		if [[ "${name}" != *'.a' ]]; then
-			continue
-		fi
-		
-		libname="$(basename "${name}" '.a')"
-		
-		declare static="./${libname}-static.a"
-		declare shared="./${libname}.so"
-		
-		if [ -f "${shared}" ] && ! [ -f "${static}" ]; then
-			ln --symbolic --relative "${library}" "${static}"
-			ln --symbolic --relative "${static}" './static'
-		fi
-	done
-	
 	for library in "${libraries[@]}"; do
-		declare static="./${libname}.a"
-		declare shared="./${libname}.so"
+		declare static="${libname}.a"
+		declare static2="${libname}-static.a"
+		declare shared="${libname}.so"
 		
 		if [ -f "${static}" ]; then
 			ln --force --symbolic --relative "${static}" './static'
+			ln --force --symbolic --relative "${static}" "./${static2}"
+			ln --force --symbolic --relative "${static}" "./static/${static2}"
+			
+			rm --force "./static/${shared}"
 		fi
 		
 		if [ -f "${shared}" ]; then
