@@ -82,6 +82,9 @@ declare -ra libraries=(
 	'libtsan'
 	'libubsan'
 	'libquadmath'
+	'compiler_rt'
+	'c++'
+	'c++abi'
 )
 
 declare -r PKG_CONFIG_PATH="${toolchain_directory}/lib/pkgconfig"
