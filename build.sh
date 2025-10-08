@@ -790,11 +790,11 @@ for triplet in "${targets[@]}"; do
 		declare shared="./${libname}.so"
 		
 		if [ -f "${static}" ]; then
-			ln --symbolic --relative "${static}" './static'
+			ln --force --symbolic --relative "${static}" './static'
 		fi
 		
 		if [ -f "${shared}" ]; then
-			ln --symbolic --relative "${shared}" './gcc'
+			ln --force --symbolic --relative "${shared}" './gcc'
 		fi
 	done
 	
