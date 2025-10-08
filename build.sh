@@ -60,6 +60,30 @@ declare -ra targets=(
 	# 'sparc64-unknown-openbsd'
 )
 
+declare -ra libraries=(
+	'libstdc++'
+	'libestdc++'
+	'libatomic'
+	'libssp'
+	'libitm'
+	'libsupc++'
+	'libgcc'
+	'libegcc'
+	'libm2cor'
+	'libm2iso'
+	'libm2log'
+	'libm2min'
+	'libm2pim'
+	'libobjc'
+	'libgfortran'
+	'libasan'
+	'libhwasan'
+	'liblsan'
+	'libtsan'
+	'libubsan'
+	'libquadmath'
+)
+
 declare -r PKG_CONFIG_PATH="${toolchain_directory}/lib/pkgconfig"
 declare -r PKG_CONFIG_LIBDIR="${PKG_CONFIG_PATH}"
 declare -r PKG_CONFIG_SYSROOT_DIR="${toolchain_directory}"
@@ -729,10 +753,10 @@ for triplet in "${targets[@]}"; do
 	ln \
 		--symbolic \
 		--relative \
-		"${toolchain_directory}/lib/gcc/${triplet}/${gcc_major}/"*'.'{a,o} \
+		"${toolchain_directory}/lib/gcc/${triplet}/${gcc_major}/"*'.a' \
 		'./'
 	
-	ln --symbolic --relative './lib'*'.'{so,a} './static'
+	ln --symbolic --relative './lib'*'.so' './static'
 	ln --symbolic --relative './crt'*'.o' './static'
 	
 	if [ -d './ldscripts' ]; then
@@ -758,6 +782,19 @@ for triplet in "${targets[@]}"; do
 		if [ -f "${shared}" ] && ! [ -f "${static}" ]; then
 			ln --symbolic --relative "${library}" "${static}"
 			ln --symbolic --relative "${static}" './static'
+		fi
+	done
+	
+	for library in "${libraries[@]}"; do
+		declare static="./${libname}.a"
+		declare shared="./${libname}.so"
+		
+		if [ -f "${static}" ]; then
+			ln --symbolic --relative "${static}" './static'
+		fi
+		
+		if [ -f "${shared}" ]; then
+			ln --symbolic --relative "${shared}" './gcc'
 		fi
 	done
 	
