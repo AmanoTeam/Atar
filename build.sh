@@ -732,12 +732,6 @@ for triplet in "${targets[@]}"; do
 		"${toolchain_directory}/lib/gcc/${triplet}/${gcc_major}/"*'.'{a,o} \
 		'./'
 	
-	ln \
-		--symbolic \
-		--relative \
-		"${toolchain_directory}/lib/gcc/${triplet}/${gcc_major}/"*'.'{a,o} \
-		'./static'
-	
 	ln --symbolic --relative './lib'*'.'{so,a} './static'
 	ln --symbolic --relative './crt'*'.o' './static'
 	
