@@ -46,18 +46,18 @@ declare -r ccflags='-w -O2'
 declare -r linkflags='-Xlinker -s'
 
 declare -ra targets=(
-	'hppa-unknown-openbsd'
+	# 'hppa-unknown-openbsd'
 	'x86_64-unknown-openbsd'
-	'mips64-unknown-openbsd'
-	'mips64el-unknown-openbsd'
-	'riscv64-unknown-openbsd'
-	'aarch64-unknown-openbsd'
-	'arm-unknown-openbsd'
-	'i386-unknown-openbsd'
-	'alpha-unknown-openbsd'
-	'powerpc-unknown-openbsd'
-	'powerpc64-unknown-openbsd'
-	'sparc64-unknown-openbsd'
+	# 'mips64-unknown-openbsd'
+	# 'mips64el-unknown-openbsd'
+	# 'riscv64-unknown-openbsd'
+	# 'aarch64-unknown-openbsd'
+	# 'arm-unknown-openbsd'
+	# 'i386-unknown-openbsd'
+	# 'alpha-unknown-openbsd'
+	# 'powerpc-unknown-openbsd'
+	# 'powerpc64-unknown-openbsd'
+	# 'sparc64-unknown-openbsd'
 )
 
 declare -r PKG_CONFIG_PATH="${toolchain_directory}/lib/pkgconfig"
@@ -666,6 +666,22 @@ for triplet in "${targets[@]}"; do
 		all --jobs="${max_jobs}"
 	make install
 	
+	declare gcc_include_dir="${toolchain_directory}/lib/gcc/${triplet}/${gcc_major}/include"
+	declare clang_include_dir="${gcc_include_dir}/clang"
+	
+	mkdir "${clang_include_dir}"
+	
+	ln \
+		--symbolic \
+		--relative \
+		"${gcc_include_dir}/"*'.h' \
+		"${clang_include_dir}"
+	
+	rm --force \
+		"${clang_include_dir}/"*'intrin'*'.h' \
+		"${clang_include_dir}/arm"*'.h' \
+		"${clang_include_dir}/stdatomic.h"
+	
 	rm "${toolchain_directory}/bin/${triplet}-${triplet}-"* || true
 	
 	cd "${toolchain_directory}/${triplet}/bin"
@@ -698,6 +714,58 @@ for triplet in "${targets[@]}"; do
 		ln --symbolic './libestdc++.a' './libstdc++.a'
 		ln --symbolic './libegcc.so' './libgcc_s.so.1'
 	fi
+	
+	mkdir 'gcc' 'static'
+	
+	echo 'INPUT (-lgcc_s)' > './libcompiler_rt.so'
+	echo 'INPUT (-lgcc)' > './libcompiler_rt.a'
+	
+	echo 'INPUT (-lestdc++)' > './libc++.so'
+	cp './libc++.so' './libc++.a'
+	
+	touch './libc++abi.so'
+	cp './libc++abi.so' './libc++abi.a'
+	
+	ln \
+		--symbolic \
+		--relative \
+		"${toolchain_directory}/lib/gcc/${triplet}/${gcc_major}/"*'.'{a,o} \
+		'./'
+	
+	ln \
+		--symbolic \
+		--relative \
+		"${toolchain_directory}/lib/gcc/${triplet}/${gcc_major}/"*'.'{a,o} \
+		'./static'
+	
+	ln --symbolic --relative './lib'*'.'{so,a} './static'
+	ln --symbolic --relative './crt'*'.o' './static'
+	
+	if [ -d './ldscripts' ]; then
+		ln --symbolic --relative './ldscripts' './static'
+	fi
+	
+	for library in "${toolchain_directory}/${triplet}/lib/lib"*.{so,a,1,spec}; do
+		declare name="$(basename "${library}")"
+		
+		if [[ "${name}" = *'*'* ]]; then
+			continue
+		fi
+		
+		if [[ "${name}" != *'.a' ]]; then
+			continue
+		fi
+		
+		libname="$(basename "${name}" '.a')"
+		
+		declare static="./${libname}-static.a"
+		declare shared="./${libname}.so"
+		
+		if [ -f "${shared}" ] && ! [ -f "${static}" ]; then
+			ln --symbolic --relative "${library}" "${static}"
+			ln --symbolic --relative "${static}" './static'
+		fi
+	done
 	
 	if [ "${CROSS_COMPILE_TRIPLET}" = "${triplet}" ]; then
 		ln \
