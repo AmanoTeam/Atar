@@ -45,6 +45,8 @@ declare -r pieflags='-fPIE'
 declare -r ccflags='-w -O2'
 declare -r linkflags='-Xlinker -s'
 
+declare -r gcc_wrapper='/tmp/gcc-wrapper'
+
 declare -ra targets=(
 	# 'hppa-unknown-openbsd'
 	'x86_64-unknown-openbsd'
@@ -490,6 +492,14 @@ cmake \
 cmake --build "${PWD}"
 cmake --install "${PWD}" --strip
 
+make \
+	-C "${workdir}/tools/gcc-wrapper" \
+	PREFIX="$(dirname "${gcc_wrapper}")" \
+	CFLAGS="-D WCLANG -D ATAR ${ccflags}" \
+	CXXFLAGS="${ccflags}" \
+	LDFLAGS="${linkflags}"  \
+	gcc
+
 # We prefer symbolic links over hard links.
 cp "${workdir}/submodules/obggcc/tools/ln.sh" '/tmp/ln'
 
@@ -695,6 +705,9 @@ for triplet in "${targets[@]}"; do
 		gcc_cv_objdump="${CROSS_COMPILE_TRIPLET}-objdump" \
 		all --jobs="${max_jobs}"
 	make install
+	
+	cp "${gcc_wrapper}" "${toolchain_directory}/bin/${triplet}-clang"
+	cp "${gcc_wrapper}" "${toolchain_directory}/bin/${triplet}-clang++"
 	
 	declare gcc_include_dir="${toolchain_directory}/lib/gcc/${triplet}/${gcc_major}/include"
 	declare clang_include_dir="${gcc_include_dir}/clang"
