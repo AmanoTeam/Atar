@@ -493,7 +493,7 @@ cmake --build "${PWD}"
 cmake --install "${PWD}" --strip
 
 make \
-	-C "${workdir}/tools/gcc-wrapper" \
+	-C "${workdir}/submodules/obggcc/tools/gcc-wrapper" \
 	PREFIX="$(dirname "${gcc_wrapper}")" \
 	CFLAGS="-D WCLANG -D ATAR ${ccflags}" \
 	CXXFLAGS="${ccflags}" \
