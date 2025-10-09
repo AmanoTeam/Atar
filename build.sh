@@ -82,9 +82,9 @@ declare -ra libraries=(
 	'libtsan'
 	'libubsan'
 	'libquadmath'
-	'compiler_rt'
-	'c++'
-	'c++abi'
+	'libcompiler_rt'
+	'libc++'
+	'libc++abi'
 )
 
 declare -r PKG_CONFIG_PATH="${toolchain_directory}/lib/pkgconfig"
@@ -767,9 +767,9 @@ for triplet in "${targets[@]}"; do
 	fi
 	
 	for library in "${libraries[@]}"; do
-		declare static="${libname}.a"
-		declare static2="${libname}-static.a"
-		declare shared="${libname}.so"
+		declare static="${library}.a"
+		declare static2="${library}-static.a"
+		declare shared="${library}.so"
 		
 		if [ -f "${static}" ]; then
 			ln --force --symbolic --relative "${static}" './static'
