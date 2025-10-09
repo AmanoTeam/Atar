@@ -596,7 +596,9 @@ for triplet in "${targets[@]}"; do
 	
 	env ${args} "${triplet}-strip" "${toolchain_directory}/${triplet}/lib/"*'.so' || true
 	
-	rm --force "${toolchain_directory}/${triplet}/include/sys/auxv.h"
+	if (( is_native )); then
+		rm --force "${toolchain_directory}/${triplet}/include/sys/auxv.h"
+	fi
 	
 	cd "${toolchain_directory}/bin"
 	
