@@ -1,4 +1,4 @@
-From 4939bad3574d0b9135f006df63cec55ad3ee141a Mon Sep 17 00:00:00 2001
+From a59c386d3f0ccecfe60788f0da83484af6dbdc5d Mon Sep 17 00:00:00 2001
 From: Kartatz <105828205+Kartatz@users.noreply.github.com>
 Date: Sun, 5 Oct 2025 16:10:32 -0300
 Subject: [PATCH] GCC 16
@@ -18,7 +18,7 @@ Subject: [PATCH] GCC 16
  gcc/config/alpha/alpha.h                      |   2 +-
  gcc/config/alpha/alpha.md                     |   3 +-
  gcc/config/alpha/alpha.opt                    |   4 +
- gcc/config/alpha/openbsd.h                    |  23 +
+ gcc/config/alpha/openbsd.h                    |  24 +
  gcc/config/arm/arm.h                          |   2 +-
  gcc/config/arm/openbsd.h                      | 257 +++++++++++
  gcc/config/arm/openbsd1.h                     |  26 ++
@@ -27,11 +27,11 @@ Subject: [PATCH] GCC 16
  gcc/config/i386/i386.h                        |   2 +
  gcc/config/i386/openbsdelf.h                  |  13 +-
  gcc/config/mips/mips.h                        |   5 +-
- gcc/config/mips/openbsd.h                     | 228 ++++++++++
+ gcc/config/mips/openbsd.h                     | 229 ++++++++++
  gcc/config/openbsd-libpthread.h               |   2 +-
  gcc/config/openbsd.h                          |   9 +-
  gcc/config/openbsd.opt                        |   3 +
- gcc/config/pa/pa-openbsd.h                    |  10 +-
+ gcc/config/pa/pa-openbsd.h                    |  11 +-
  gcc/config/pa/pa.cc                           |   4 +
  gcc/config/pa/pa.h                            |   3 +
  gcc/config/riscv/openbsd.h                    | 122 ++++++
@@ -42,7 +42,7 @@ Subject: [PATCH] GCC 16
  gcc/config/rs6000/openbsd64.h                 | 412 ++++++++++++++++++
  gcc/config/rs6000/sysv4.h                     |  15 +-
  gcc/config/rs6000/t-openbsd                   |  48 ++
- gcc/config/sparc/openbsd64.h                  |  32 +-
+ gcc/config/sparc/openbsd64.h                  |  33 +-
  gcc/config/sparc/sparc.cc                     |   6 +-
  gcc/config/t-openbsd                          |   6 +-
  gcc/configure                                 |   8 +-
@@ -64,7 +64,7 @@ Subject: [PATCH] GCC 16
  libgcc/libgcc2.c                              |   1 +
  libgcc/unwind-dw2.c                           |  27 ++
  .../config/os/bsd/openbsd/ctype_base.h        |  19 +-
- 60 files changed, 1926 insertions(+), 124 deletions(-)
+ 60 files changed, 1930 insertions(+), 124 deletions(-)
  create mode 100644 gcc/config/aarch64/openbsd.h
  create mode 100644 gcc/config/arm/openbsd.h
  create mode 100644 gcc/config/arm/openbsd1.h
@@ -526,7 +526,7 @@ index 4c1a5e991..362ed53da 100644
  	host_extra_gcc_objs="driver-arm.o"
 diff --git a/gcc/config/aarch64/openbsd.h b/gcc/config/aarch64/openbsd.h
 new file mode 100644
-index 000000000..58794bf34
+index 000000000..0815395d3
 --- /dev/null
 +++ b/gcc/config/aarch64/openbsd.h
 @@ -0,0 +1,117 @@
@@ -584,8 +584,8 @@ index 000000000..58794bf34
 +   %{rdynamic:-export-dynamic} \
 +   %{assert*} \
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!nostdlib:-L/usr/lib} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
 +
 +#define OPENBSD_ENTRY_POINT "__start"
 +
@@ -832,10 +832,10 @@ index 3c1320b51..7ec704b0e 100644
  Target RejectNegative Mask(IEEE_WITH_INEXACT)
  
 diff --git a/gcc/config/alpha/openbsd.h b/gcc/config/alpha/openbsd.h
-index 323f0abee..9caf9f979 100644
+index 323f0abee..61709fa9b 100644
 --- a/gcc/config/alpha/openbsd.h
 +++ b/gcc/config/alpha/openbsd.h
-@@ -41,6 +41,29 @@ along with GCC; see the file COPYING3.  If not see
+@@ -41,6 +41,30 @@ along with GCC; see the file COPYING3.  If not see
  #undef ENDFILE_SPEC
  #define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
  
@@ -851,7 +851,8 @@ index 323f0abee..9caf9f979 100644
 +   %{rdynamic:-export-dynamic} \
 +   %{assert*} \
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
 +
 +/* As an elf system, we need crtbegin/crtend stuff.  */
 +#undef STARTFILE_SPEC
@@ -880,7 +881,7 @@ index 2e9d678d3..c85057815 100644
  # define MCPU_MTUNE_NATIVE_FUNCTIONS			\
 diff --git a/gcc/config/arm/openbsd.h b/gcc/config/arm/openbsd.h
 new file mode 100644
-index 000000000..4d0d97a5b
+index 000000000..f058fff9a
 --- /dev/null
 +++ b/gcc/config/arm/openbsd.h
 @@ -0,0 +1,257 @@
@@ -964,8 +965,8 @@ index 000000000..4d0d97a5b
 +   %{rdynamic:-export-dynamic} \
 +   %{assert*} \
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!nostdlib:-L/usr/lib} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
 +#endif
 +
 +#undef SUBTARGET_EXTRA_ASM_SPEC
@@ -1255,7 +1256,7 @@ index f4c89f012..d51fe06d9 100644
       move instead of push instructions.  */
    bool save_regs_using_mov;
 diff --git a/gcc/config/i386/openbsdelf.h b/gcc/config/i386/openbsdelf.h
-index bd63226b3..95578e7fa 100644
+index bd63226b3..3bb7b52ff 100644
 --- a/gcc/config/i386/openbsdelf.h
 +++ b/gcc/config/i386/openbsdelf.h
 @@ -75,14 +75,19 @@ along with GCC; see the file COPYING3.  If not see
@@ -1266,8 +1267,8 @@ index bd63226b3..95578e7fa 100644
     %{assert*} \
 -   -dynamic-linker /usr/libexec/ld.so"
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!nostdlib:-L/usr/lib} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
  
  #undef STARTFILE_SPEC
 -#define STARTFILE_SPEC "\
@@ -1315,10 +1316,10 @@ index 494f14cc1..c594ca606 100644
     micromips or fix_24k.  */
 diff --git a/gcc/config/mips/openbsd.h b/gcc/config/mips/openbsd.h
 new file mode 100644
-index 000000000..f375955e2
+index 000000000..d04aad270
 --- /dev/null
 +++ b/gcc/config/mips/openbsd.h
-@@ -0,0 +1,228 @@
+@@ -0,0 +1,229 @@
 +/* Configuration file for a mips64 OpenBSD target.
 +   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006
 +   Free Software Foundation, Inc.
@@ -1459,7 +1460,8 @@ index 000000000..f375955e2
 +   %{rdynamic:-export-dynamic} \
 +   %{assert*} \
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
 +
 +/* As an elf system, we need crtbegin/crtend stuff.  */
 +#undef STARTFILE_SPEC
@@ -1604,10 +1606,10 @@ index 4f594057e..9ff9673f4 100644
 +
  ; This comment is to ensure we retain the blank line above.
 diff --git a/gcc/config/pa/pa-openbsd.h b/gcc/config/pa/pa-openbsd.h
-index 6c04f8a71..521b2a0ae 100644
+index 6c04f8a71..32ec5b232 100644
 --- a/gcc/config/pa/pa-openbsd.h
 +++ b/gcc/config/pa/pa-openbsd.h
-@@ -138,14 +138,16 @@ along with GCC; see the file COPYING3.  If not see
+@@ -138,14 +138,17 @@ along with GCC; see the file COPYING3.  If not see
     %{shared:-shared} %{R*} \
     %{static:-Bstatic} \
     %{!static:-Bdynamic} \
@@ -1615,7 +1617,8 @@ index 6c04f8a71..521b2a0ae 100644
     %{assert*} \
 -   -dynamic-linker /usr/libexec/ld.so"
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
  
  #undef STARTFILE_SPEC
  #define STARTFILE_SPEC "\
@@ -1666,7 +1669,7 @@ index 6972faae8..d6d47e318 100644
  #define STRICT_ALIGNMENT 1
 diff --git a/gcc/config/riscv/openbsd.h b/gcc/config/riscv/openbsd.h
 new file mode 100644
-index 000000000..01cc4c45b
+index 000000000..5644b8fbf
 --- /dev/null
 +++ b/gcc/config/riscv/openbsd.h
 @@ -0,0 +1,122 @@
@@ -1729,8 +1732,8 @@ index 000000000..01cc4c45b
 +   %{rdynamic:-export-dynamic} \
 +   %{assert*} \
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!nostdlib:-L/usr/lib} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
 +
 +#define OPENBSD_ENTRY_POINT "__start"
 +
@@ -1828,7 +1831,7 @@ index 2ab675e6d..7f8c0c7bb 100644
  
 diff --git a/gcc/config/rs6000/openbsd.h b/gcc/config/rs6000/openbsd.h
 new file mode 100644
-index 000000000..885c7d91c
+index 000000000..1faa0f119
 --- /dev/null
 +++ b/gcc/config/rs6000/openbsd.h
 @@ -0,0 +1,133 @@
@@ -1901,8 +1904,8 @@ index 000000000..885c7d91c
 +   %{rdynamic:-export-dynamic} \
 +   %{assert*} \
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!nostdlib:-L/usr/lib} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
 +
 +#undef	LIB_DEFAULT_SPEC
 +#define LIB_DEFAULT_SPEC "%(lib_openbsd)"
@@ -1997,7 +2000,7 @@ index 000000000..bc6ead081
 +#define OBSD_HAS_DECLARE_OBJECT
 diff --git a/gcc/config/rs6000/openbsd64.h b/gcc/config/rs6000/openbsd64.h
 new file mode 100644
-index 000000000..7096e6fae
+index 000000000..12dad973b
 --- /dev/null
 +++ b/gcc/config/rs6000/openbsd64.h
 @@ -0,0 +1,412 @@
@@ -2249,8 +2252,8 @@ index 000000000..7096e6fae
 +   %{rdynamic:-export-dynamic} \
 +   %{assert*} \
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!nostdlib:-L/usr/lib} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
 +
 +#undef	LIB_DEFAULT_SPEC
 +#define LIB_DEFAULT_SPEC "%(lib_openbsd)"
@@ -2526,7 +2529,7 @@ index 000000000..d0d43ba45
 +# --enable-shared --disable-multilib
 +CRTSTUFF_T_CFLAGS_S = -fPIC -msdata=none
 diff --git a/gcc/config/sparc/openbsd64.h b/gcc/config/sparc/openbsd64.h
-index b18918b8b..113b38a30 100644
+index b18918b8b..fea0b3103 100644
 --- a/gcc/config/sparc/openbsd64.h
 +++ b/gcc/config/sparc/openbsd64.h
 @@ -20,7 +20,7 @@ along with GCC; see the file COPYING3.  If not see
@@ -2584,7 +2587,7 @@ index b18918b8b..113b38a30 100644
  
  #undef SPARC_LONG_DOUBLE_TYPE_SIZE
  #define SPARC_LONG_DOUBLE_TYPE_SIZE 128
-@@ -63,13 +76,16 @@ along with GCC; see the file COPYING3.  If not see
+@@ -63,13 +76,17 @@ along with GCC; see the file COPYING3.  If not see
     %{shared:-shared} %{R*} \
     %{static:-Bstatic} \
     %{!static:-Bdynamic} \
@@ -2592,7 +2595,8 @@ index b18918b8b..113b38a30 100644
     %{assert*} \
 -   -dynamic-linker /usr/libexec/ld.so"
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
-+   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}}"
++   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
++   -z origin"
  
  /* As an elf system, we need crtbegin/crtend stuff.  */
  #undef STARTFILE_SPEC

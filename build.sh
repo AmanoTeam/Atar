@@ -68,6 +68,7 @@ declare -ra libraries=(
 	'libitm'
 	'libsupc++'
 	'libgcc'
+	'libgcc_eh'
 	'libegcc'
 	'libm2cor'
 	'libm2iso'
@@ -745,7 +746,7 @@ for triplet in "${targets[@]}"; do
 	mkdir 'gcc' 'static'
 	
 	echo 'INPUT (-lgcc_s)' > './libcompiler_rt.so'
-	echo 'INPUT (-lgcc)' > './libcompiler_rt.a'
+	echo 'INPUT (-lgcc -lgcc_eh)' > './libcompiler_rt.a'
 	
 	echo 'INPUT (-lestdc++)' > './libc++.so'
 	cp './libc++.so' './libc++.a'
