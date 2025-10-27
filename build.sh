@@ -49,11 +49,11 @@ declare -r gcc_wrapper='/tmp/gcc-wrapper'
 
 declare -ra targets=(
 	# 'hppa-unknown-openbsd'
-	'x86_64-unknown-openbsd'
+	# 'x86_64-unknown-openbsd'
 	# 'mips64-unknown-openbsd'
 	# 'mips64el-unknown-openbsd'
 	# 'riscv64-unknown-openbsd'
-	# 'aarch64-unknown-openbsd'
+	'aarch64-unknown-openbsd'
 	# 'arm-unknown-openbsd'
 	# 'i386-unknown-openbsd'
 	# 'alpha-unknown-openbsd'
@@ -231,6 +231,13 @@ if ! [ -f "${binutils_tarball}" ]; then
 			"${workdir}/submodules/obggcc/patches/0001-Add-relative-RPATHs-to-binutils-host-tools.patch"
 	fi
 	
+	if [[ "${CROSS_COMPILE_TRIPLET}" = *'bsd'* ]]; then
+		sed \
+			--in-place \
+			's/-Xlinker -rpath/-Xlinker -z -Xlinker origin -Xlinker -rpath/g' \
+			"${workdir}/submodules/obggcc/patches/0001-Add-relative-RPATHs-to-binutils-host-tools.patch"
+	fi
+	
 	patch --directory="${binutils_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Add-relative-RPATHs-to-binutils-host-tools.patch"
 	patch --directory="${binutils_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Don-t-warn-about-local-symbols-within-the-globals.patch"
 fi
@@ -258,7 +265,14 @@ if ! [ -f "${gcc_tarball}" ]; then
 			"${workdir}/submodules/obggcc/patches/0007-Add-relative-RPATHs-to-GCC-host-tools.patch"
 	fi
 	
-	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-GCC-16.patch"
+	if [[ "${CROSS_COMPILE_TRIPLET}" = *'bsd'* ]]; then
+		sed \
+			--in-place \
+			's/-Xlinker -rpath/-Xlinker -z -Xlinker origin -Xlinker -rpath/g' \
+			"${workdir}/submodules/obggcc/patches/0007-Add-relative-RPATHs-to-GCC-host-tools.patch"
+	fi
+	
+	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/patches/0001-GCC-15.patch"
 	
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0001-Turn-Wimplicit-function-declaration-back-into-an-warning.patch"
 	patch --directory="${gcc_directory}" --strip='1' --input="${workdir}/submodules/obggcc/patches/0003-Change-the-default-language-version-for-C-compilation-from-std-gnu23-to-std-gnu17.patch"
@@ -530,10 +544,10 @@ for triplet in "${targets[@]}"; do
 	declare extra_binutils_flags=''
 	declare require_lld='0'
 	
-	declare specs='%{!Qy:-Qn}'
+	declare specs='%{!Qy: -Qn} %{!fno-pic: %{!fno-PIC: %{!fpic: %{!fPIC: -fpic}}}} %{!fno-plt: %{!fplt: -fno-plt}}'
 	
 	if [ "${triplet}" = 'x86_64-unknown-openbsd' ] || [ "${triplet}" = 'i386-unknown-openbsd' ]; then
-		specs+=' %{!fno-plt:%{!fplt:-fno-plt}}'
+		specs+=' %{!fno-plt: %{!fplt: -fno-plt}}'
 	fi
 	
 	if [ "${triplet}" = 'arm-unknown-openbsd' ] || [ "${triplet}" = 'aarch64-unknown-openbsd' ]; then
@@ -671,6 +685,7 @@ for triplet in "${targets[@]}"; do
 		--enable-cxx-flags="${linkflags}" \
 		--enable-host-pie \
 		--enable-host-shared \
+		--enable-libgomp \
 		--with-specs="${specs}" \
 		--without-headers \
 		--with-pic \
@@ -678,7 +693,6 @@ for triplet in "${targets[@]}"; do
 		--disable-c++-tools \
 		--disable-libsanitizer \
 		--disable-bootstrap \
-		--disable-libgomp \
 		--disable-libstdcxx-pch \
 		--disable-multilib \
 		--disable-nls \
@@ -830,29 +844,44 @@ fi
 if ! (( is_native )) && [[ "${CROSS_COMPILE_TRIPLET}" != *'-darwin'* ]]; then
 	[ -d "${toolchain_directory}/lib" ] || mkdir "${toolchain_directory}/lib"
 	
-	# libstdc++
-	declare name=$(realpath $("${cc}" --print-file-name='libstdc++.so'))
-	
 	# libestdc++
+	declare name=$(realpath $("${cc}" --print-file-name='libestdc++.so'))
+	
+	# libstdc++
 	if ! [ -f "${name}" ]; then
-		declare name=$(realpath $("${cc}" --print-file-name='libestdc++.so'))
+		declare name=$(realpath $("${cc}" --print-file-name='libstdc++.so'))
 	fi
 	
 	declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
 	
 	cp "${name}" "${toolchain_directory}/lib/${soname}"
-	
-	# libgcc_s
-	declare name=$(realpath $("${cc}" --print-file-name='libgcc_s.so.1'))
 	
 	# libegcc
+	declare name=$(realpath $("${cc}" --print-file-name='libegcc.so'))
+	
+	# libgcc_s
 	if ! [ -f "${name}" ]; then
-		declare name=$(realpath $("${cc}" --print-file-name='libegcc.so'))
+		declare name=$(realpath $("${cc}" --print-file-name='libgcc_s.so.1'))
 	fi
 	
 	declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
 	
 	cp "${name}" "${toolchain_directory}/lib/${soname}"
+	
+	# libatomic
+	declare name=$(realpath $("${cc}" --print-file-name='libatomic.so'))
+	
+	declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
+	
+	cp "${name}" "${toolchain_directory}/lib/${soname}"
+	
+	# libiconv
+	declare name=$(realpath $("${cc}" --print-file-name='libiconv.so'))
+	
+	if [ -f "${name}" ]; then
+		declare soname=$("${readelf}" -d "${name}" | grep 'SONAME' | sed --regexp-extended 's/.+\[(.+)\]/\1/g')
+		cp "${name}" "${toolchain_directory}/lib/${soname}"
+	fi
 fi
 
 mkdir --parent "${share_directory}"

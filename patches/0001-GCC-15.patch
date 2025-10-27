@@ -1,7 +1,7 @@
-From c2dbcddba5d12bedcba6a3ca829b7fa5824f1153 Mon Sep 17 00:00:00 2001
+From 3e15bcc8294e19e27d043a6ffcd38700fd20c2ca Mon Sep 17 00:00:00 2001
 From: Kartatz <105828205+Kartatz@users.noreply.github.com>
-Date: Sun, 5 Oct 2025 16:10:32 -0300
-Subject: [PATCH] GCC 16
+Date: Mon, 27 Oct 2025 15:31:21 -0300
+Subject: [PATCH] GCC 15
 
 ---
  fixincludes/fixincl.x                         |   4 +-
@@ -13,7 +13,7 @@ Subject: [PATCH] GCC 16
  gcc/common/config/rs6000/rs6000-common.cc     |   4 -
  gcc/config.gcc                                |  75 +++-
  gcc/config.host                               |   4 +-
- gcc/config/aarch64/openbsd.h                  | 119 +++++
+ gcc/config/aarch64/openbsd.h                  | 117 +++++
  gcc/config/alpha/alpha.cc                     |  60 ++-
  gcc/config/alpha/alpha.h                      |   2 +-
  gcc/config/alpha/alpha.md                     |   3 +-
@@ -64,7 +64,7 @@ Subject: [PATCH] GCC 16
  libgcc/libgcc2.c                              |   1 +
  libgcc/unwind-dw2.c                           |  27 ++
  .../config/os/bsd/openbsd/ctype_base.h        |  19 +-
- 60 files changed, 1951 insertions(+), 124 deletions(-)
+ 60 files changed, 1949 insertions(+), 124 deletions(-)
  create mode 100644 gcc/config/aarch64/openbsd.h
  create mode 100644 gcc/config/arm/openbsd.h
  create mode 100644 gcc/config/arm/openbsd1.h
@@ -78,7 +78,7 @@ Subject: [PATCH] GCC 16
  create mode 100644 libgcc/config/rs6000/t-openbsd
 
 diff --git a/fixincludes/fixincl.x b/fixincludes/fixincl.x
-index e684b211c..59487e68f 100644
+index e793699ec..50ee6281f 100644
 --- a/fixincludes/fixincl.x
 +++ b/fixincludes/fixincl.x
 @@ -7892,11 +7892,11 @@ static const char* apzSolaris_Complex_CxxPatch[] = { sed_cmd_z,
@@ -96,7 +96,7 @@ index e684b211c..59487e68f 100644
  
  /* * * * * * * * * * * * * * * * * * * * * * * * * *
 diff --git a/fixincludes/inclhack.def b/fixincludes/inclhack.def
-index 71777cb10..0f6edb574 100644
+index 51163a9de..af9a7da86 100644
 --- a/fixincludes/inclhack.def
 +++ b/fixincludes/inclhack.def
 @@ -3942,9 +3942,9 @@ fix = {
@@ -112,10 +112,10 @@ index 71777cb10..0f6edb574 100644
  		"#endif	/* !defined(__cplusplus) */";
  };
 diff --git a/gcc/c-family/c-format.cc b/gcc/c-family/c-format.cc
-index bf144d0f6..5e2746c44 100644
+index 211d20dd2..c18ebffcb 100644
 --- a/gcc/c-family/c-format.cc
 +++ b/gcc/c-family/c-format.cc
-@@ -45,6 +45,7 @@ along with GCC; see the file COPYING3.  If not see
+@@ -44,6 +44,7 @@ along with GCC; see the file COPYING3.  If not see
     format_type_error.  Target-specific format types do not have
     matching enum values.  */
  enum format_type { printf_format_type, asm_fprintf_format_type,
@@ -123,7 +123,7 @@ index bf144d0f6..5e2746c44 100644
  		   gcc_diag_format_type, gcc_tdiag_format_type,
  		   gcc_cdiag_format_type,
  		   gcc_cxxdiag_format_type, gcc_gfc_format_type,
-@@ -521,6 +522,16 @@ static const format_length_info gcc_diag_length_specs[] =
+@@ -519,6 +520,16 @@ static const format_length_info gcc_diag_length_specs[] =
    { NO_FMT, NO_FMT, 0 }
  };
  
@@ -140,7 +140,7 @@ index bf144d0f6..5e2746c44 100644
  /* The custom diagnostics all accept the same length specifiers.  */
  #define gcc_tdiag_length_specs gcc_diag_length_specs
  #define gcc_cdiag_length_specs gcc_diag_length_specs
-@@ -783,6 +794,44 @@ static const format_char_info asm_fprintf_char_table[] =
+@@ -780,6 +791,44 @@ static const format_char_info asm_fprintf_char_table[] =
    { "m",   0, STD_C89, NOARGUMENTS, "q",     "",   NULL }, \
    { "Z",   1, STD_C89, { T89_I,   BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN,  BADLEN  }, "",    "", &gcc_diag_char_table[0] }
  
@@ -185,7 +185,7 @@ index bf144d0f6..5e2746c44 100644
  static const format_char_info gcc_diag_char_table[] =
  {
    /* The conversion specifiers implemented within pp_format.  */
-@@ -956,6 +1005,18 @@ static const format_kind_info format_types_orig[] =
+@@ -953,6 +1002,18 @@ static const format_kind_info format_types_orig[] =
      'w', 0, 'p', 0, 'L', 0,
      NULL, NULL
    },
@@ -205,10 +205,10 @@ index bf144d0f6..5e2746c44 100644
      gcc_diag_flag_specs, gcc_diag_flag_pairs,
      FMT_FLAG_ARG_CONVERT,
 diff --git a/gcc/common.opt b/gcc/common.opt
-index f6d93dc05..80462b433 100644
+index e3fa0dace..5e7bded39 100644
 --- a/gcc/common.opt
 +++ b/gcc/common.opt
-@@ -684,6 +684,10 @@ Wnull-dereference
+@@ -686,6 +686,10 @@ Wnull-dereference
  Common Var(warn_null_dereference) Warning
  Warn if dereferencing a NULL pointer may lead to erroneous or undefined behavior.
  
@@ -219,7 +219,7 @@ index f6d93dc05..80462b433 100644
  Wunsafe-loop-optimizations
  Common Ignore Warning
  Does nothing. Preserved for backward compatibility.
-@@ -815,7 +819,7 @@ Warn about statements between switch's controlling expression and the first
+@@ -817,7 +821,7 @@ Warn about statements between switch's controlling expression and the first
  case.
  
  Wsystem-headers
@@ -228,7 +228,7 @@ index f6d93dc05..80462b433 100644
  Do not suppress warnings from system headers.
  
  Wtautological-compare
-@@ -884,6 +888,10 @@ Wunused-variable
+@@ -880,6 +884,10 @@ Wunused-variable
  Common Var(warn_unused_variable) Warning EnabledBy(Wunused)
  Warn when a variable is unused.
  
@@ -239,7 +239,7 @@ index f6d93dc05..80462b433 100644
  Wcoverage-mismatch
  Common Var(warn_coverage_mismatch) Init(1) Warning
  Warn in case profiles in -fprofile-use do not match.
-@@ -1078,7 +1086,7 @@ Common Joined RejectNegative UInteger Var(flag_abi_version) Init(0)
+@@ -1068,7 +1076,7 @@ Common Joined RejectNegative UInteger Var(flag_abi_version) Init(0)
  The version of the C++ ABI in use.
  
  faggressive-loop-optimizations
@@ -248,7 +248,7 @@ index f6d93dc05..80462b433 100644
  Aggressively optimize loops using language constraints.
  
  falign-functions
-@@ -1391,7 +1399,7 @@ Common Var(flag_delete_dead_exceptions) Init(0) Optimization
+@@ -1359,7 +1367,7 @@ Common Var(flag_delete_dead_exceptions) Init(0) Optimization
  Delete dead instructions that may throw exceptions.
  
  fdelete-null-pointer-checks
@@ -256,8 +256,8 @@ index f6d93dc05..80462b433 100644
 +Common Var(flag_delete_null_pointer_checks) Init(0) Optimization
  Delete useless null pointer checks.
  
- fdep-fusion
-@@ -1989,7 +1997,7 @@ Enum(hardcfr_check_noreturn_calls) String(always) Value(HCFRNR_ALWAYS)
+ fdevirtualize-at-ltrans
+@@ -1943,7 +1951,7 @@ Enum(hardcfr_check_noreturn_calls) String(always) Value(HCFRNR_ALWAYS)
  ; On SVR4 targets, it also controls whether or not to emit a
  ; string identifying the compiler.
  fident
@@ -266,7 +266,7 @@ index f6d93dc05..80462b433 100644
  Process #ident directives.
  
  fif-conversion
-@@ -2104,7 +2112,7 @@ Common RejectNegative Alias(fcf-protection=,full)
+@@ -2058,7 +2066,7 @@ Common RejectNegative Alias(fcf-protection=,full)
  Equivalent to -fcf-protection=full.
  
  fcf-protection=
@@ -275,7 +275,7 @@ index f6d93dc05..80462b433 100644
  -fcf-protection=[full|branch|return|none|check]	Instrument functions with checks to verify jump/call/return control-flow transfer
  instructions have valid targets.
  
-@@ -3044,7 +3052,7 @@ Common RejectNegative Joined Var(common_deferred_options) Defer
+@@ -2998,7 +3006,7 @@ Common RejectNegative Joined Var(common_deferred_options) Defer
  -fstack-limit-symbol=<name>	Trap if the stack goes past symbol <name>.
  
  fstack-protector
@@ -284,7 +284,7 @@ index f6d93dc05..80462b433 100644
  Use propolice as a stack protection method.
  
  fstack-protector-all
-@@ -3828,6 +3836,9 @@ Driver
+@@ -3782,6 +3790,9 @@ Driver
  nodefaultlibs
  Driver
  
@@ -295,7 +295,7 @@ index f6d93dc05..80462b433 100644
  Driver
  
 diff --git a/gcc/common/config/aarch64/aarch64-common.cc b/gcc/common/config/aarch64/aarch64-common.cc
-index 1488697c6..bec1c4a85 100644
+index b9ed83642..6afd9e66f 100644
 --- a/gcc/common/config/aarch64/aarch64-common.cc
 +++ b/gcc/common/config/aarch64/aarch64-common.cc
 @@ -47,8 +47,6 @@
@@ -335,10 +335,10 @@ index 64794ba18..7b2e4fcdf 100644
       without maintaining a stack frame back-chain.  It also allows the
       debugger to find out where on-entry register values are stored at any
 diff --git a/gcc/config.gcc b/gcc/config.gcc
-index 9c8f4d053..cd387c70d 100644
+index 087aaa7be..89de24c85 100644
 --- a/gcc/config.gcc
 +++ b/gcc/config.gcc
-@@ -969,6 +969,14 @@ case ${target} in
+@@ -970,6 +970,14 @@ case ${target} in
        target_has_targetdm=yes
        ;;
    esac
@@ -353,7 +353,7 @@ index 9c8f4d053..cd387c70d 100644
    ;;
  *-*-netbsd*)
    tm_p_file="${tm_p_file} netbsd-protos.h"
-@@ -1235,6 +1243,13 @@ aarch64*-*-netbsd*)
+@@ -1236,6 +1244,13 @@ aarch64*-*-netbsd*)
  	tmake_file="${tmake_file} aarch64/t-aarch64 aarch64/t-aarch64-netbsd"
  	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
  	;;
@@ -367,7 +367,7 @@ index 9c8f4d053..cd387c70d 100644
  aarch64*-*-linux*)
  	tm_file="${tm_file} elfos.h gnu-user.h linux.h glibc-stdint.h"
  	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-errata.h aarch64/aarch64-linux.h"
-@@ -1316,7 +1331,7 @@ alpha*-*-netbsd*)
+@@ -1317,7 +1332,7 @@ alpha*-*-netbsd*)
  		       alpha/elf.opt"
  	;;
  alpha*-*-openbsd*)
@@ -376,7 +376,7 @@ index 9c8f4d053..cd387c70d 100644
  	tm_file="elfos.h alpha/alpha.h alpha/elf.h openbsd.h openbsd-stdint.h alpha/openbsd.h openbsd-libpthread.h"
  	tmake_file="${tmake_file} alpha/t-alpha"
  	extra_options="${extra_options} openbsd.opt alpha/elf.opt"
-@@ -1440,6 +1455,14 @@ arm*-*-netbsdelf*)
+@@ -1441,6 +1456,14 @@ arm*-*-netbsdelf*)
  	armv7*) target_cpu_cname="generic-armv7-a";;
  	esac
  	;;
@@ -391,7 +391,7 @@ index 9c8f4d053..cd387c70d 100644
  arm*-*-linux-* | arm*-*-uclinuxfdpiceabi)
  	tm_file="elfos.h gnu-user.h linux.h linux-android.h glibc-stdint.h arm/elf.h arm/linux-gas.h arm/linux-elf.h"
  	extra_options="${extra_options} linux-android.opt"
-@@ -1871,10 +1894,11 @@ hppa*-*-linux*)
+@@ -1872,10 +1895,11 @@ hppa*-*-linux*)
  	;;
  hppa*-*-openbsd*)
  	target_cpu_default="MASK_PA_11"
@@ -404,7 +404,7 @@ index 9c8f4d053..cd387c70d 100644
  	d_target_objs="${d_target_objs} pa-d.o"
  	gas=yes
  	gnu_ld=yes
-@@ -1994,6 +2018,7 @@ x86_64-*-netbsd*)
+@@ -1995,6 +2019,7 @@ x86_64-*-netbsd*)
  	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
  	;;
  i[34567]86-*-openbsd*)
@@ -412,7 +412,7 @@ index 9c8f4d053..cd387c70d 100644
  	tm_file="${tm_file} i386/unix.h i386/att.h elfos.h"
  	tm_file="${tm_file} openbsd.h openbsd-stdint.h openbsd-libpthread.h i386/openbsdelf.h"
  	extra_options="${extra_options} openbsd.opt"
-@@ -2001,12 +2026,25 @@ i[34567]86-*-openbsd*)
+@@ -2002,12 +2027,25 @@ i[34567]86-*-openbsd*)
  	gnu_ld=yes
  	;;
  x86_64-*-openbsd*)
@@ -438,7 +438,7 @@ index 9c8f4d053..cd387c70d 100644
  i[34567]86-*-linux* | i[34567]86-*-kfreebsd*-gnu | i[34567]86-*-gnu* | i[34567]86-*-kopensolaris*-gnu)
  			# Intel 80386's running GNU/*
  			# with ELF format using glibc 2
-@@ -2630,6 +2668,19 @@ mips*-*-netbsd*)			# NetBSD/mips, either endian.
+@@ -2617,6 +2655,19 @@ mips*-*-netbsd*)			# NetBSD/mips, either endian.
  	tm_file="elfos.h ${tm_file} mips/elf.h ${nbsd_tm_file} mips/netbsd.h"
  	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
  	;;
@@ -458,7 +458,7 @@ index 9c8f4d053..cd387c70d 100644
  mips*-img-linux*)
  	tm_file="elfos.h gnu-user.h linux.h linux-android.h glibc-stdint.h ${tm_file} mips/gnu-user.h mips/linux.h mips/linux-common.h mips/mti-linux.h"
  	extra_options="${extra_options} linux-android.opt"
-@@ -2982,6 +3033,18 @@ pdp11-*-*)
+@@ -2969,6 +3020,18 @@ pdp11-*-*)
  #	tmake_file="${tmake_file} rs6000/t-fprules"
  #	extra_headers=
  #	;;
@@ -477,7 +477,7 @@ index 9c8f4d053..cd387c70d 100644
  powerpc-*-darwin*)
  	extra_options="${extra_options} ${cpu_type}/darwin.opt"
  	case ${target} in
-@@ -3546,10 +3609,10 @@ sparc64-*-netbsd*)
+@@ -3534,10 +3597,10 @@ sparc64-*-netbsd*)
  	tmake_file="${tmake_file} sparc/t-sparc sparc/t-netbsd64"
  	;;
  sparc64-*-openbsd*)
@@ -489,7 +489,7 @@ index 9c8f4d053..cd387c70d 100644
  	gas=yes gnu_ld=yes
  	with_cpu=ultrasparc
  	tmake_file="${tmake_file} sparc/t-sparc"
-@@ -3740,6 +3803,12 @@ case ${target} in
+@@ -3728,6 +3791,12 @@ case ${target} in
      arch_without_sse2=yes
      arch_without_64bit=yes
      ;;
@@ -526,10 +526,10 @@ index 4c1a5e991..362ed53da 100644
  	host_extra_gcc_objs="driver-arm.o"
 diff --git a/gcc/config/aarch64/openbsd.h b/gcc/config/aarch64/openbsd.h
 new file mode 100644
-index 000000000..21dabbc7e
+index 000000000..87489a68e
 --- /dev/null
 +++ b/gcc/config/aarch64/openbsd.h
-@@ -0,0 +1,119 @@
+@@ -0,0 +1,117 @@
 +/* Definitions of target machine for GNU compiler, OpenBSD/aarch64 ELF version.
 +   Copyright (C) 2002 Free Software Foundation, Inc.
 +
@@ -585,9 +585,7 @@ index 000000000..21dabbc7e
 +   %{assert*} \
 +   %{!static:-dynamic-linker /usr/libexec/ld.so} \
 +   %{!fbuilding-libgcc: %{!nostdlib: %{!static: %{!static-libgcc: -lgcc_s}}}} \
-+   -z origin \
-+   %{!fno-pic: %{!fno-PIC: %{!fpic: %{!fPIC: -fPIC}}}} \
-+   %{!shared: -pie}"
++   %{!shared: %{!no-pie: %{!fno-pie: %{!fno-PIE: %{!pie: %{!fpie: %{!fPIE: -pie}}}}}}}"
 +
 +#define OPENBSD_ENTRY_POINT "__start"
 +
@@ -650,7 +648,7 @@ index 000000000..21dabbc7e
 +/* dito */
 +#undef EXTRA_SPEC_FUNCTIONS
 diff --git a/gcc/config/alpha/alpha.cc b/gcc/config/alpha/alpha.cc
-index 5082c1ca0..e398f6c0c 100644
+index 14e7da57c..3b78cc9e5 100644
 --- a/gcc/config/alpha/alpha.cc
 +++ b/gcc/config/alpha/alpha.cc
 @@ -49,6 +49,7 @@ along with GCC; see the file COPYING3.  If not see
@@ -679,7 +677,7 @@ index 5082c1ca0..e398f6c0c 100644
  
    alpha_override_options_after_change ();
  
-@@ -8059,8 +8066,6 @@ alpha_initial_elimination_offset (unsigned int from,
+@@ -8063,8 +8070,6 @@ alpha_initial_elimination_offset (unsigned int from,
    switch (from)
      {
      case FRAME_POINTER_REGNUM:
@@ -688,7 +686,7 @@ index 5082c1ca0..e398f6c0c 100644
      case ARG_POINTER_REGNUM:
        ret += (ALPHA_ROUND (get_frame_size ()
  			   + crtl->args.pretend_args_size)
-@@ -8443,6 +8448,9 @@ alpha_expand_prologue (void)
+@@ -8447,6 +8452,9 @@ alpha_expand_prologue (void)
    HOST_WIDE_INT reg_offset;
    rtx sa_reg;
  
@@ -698,7 +696,7 @@ index 5082c1ca0..e398f6c0c 100644
    if (flag_stack_usage_info)
      current_function_static_stack_size = frame_size;
  
-@@ -8479,6 +8487,8 @@ alpha_expand_prologue (void)
+@@ -8483,6 +8491,8 @@ alpha_expand_prologue (void)
    if (flag_stack_check || flag_stack_clash_protection)
      probed_size += get_stack_check_protect ();
  
@@ -707,7 +705,7 @@ index 5082c1ca0..e398f6c0c 100644
    if (probed_size <= 32768)
      {
        if (probed_size > 4096)
-@@ -8559,6 +8569,34 @@ alpha_expand_prologue (void)
+@@ -8563,6 +8573,34 @@ alpha_expand_prologue (void)
  				 plus_constant (Pmode, stack_pointer_rtx,
  						-frame_size)));
      }
@@ -742,7 +740,7 @@ index 5082c1ca0..e398f6c0c 100644
  
    /* Cope with very large offsets to the register save area.  */
    sa_bias = 0;
-@@ -9360,11 +9398,15 @@ summarize_insn (rtx x, struct shadow_summary *sum, int set)
+@@ -9364,11 +9402,15 @@ summarize_insn (rtx x, struct shadow_summary *sum, int set)
     result of an instruction that might generate an UNPREDICTABLE
     result.
  
@@ -760,7 +758,7 @@ index 5082c1ca0..e398f6c0c 100644
  
  static void
  alpha_handle_trap_shadows (void)
-@@ -9436,7 +9478,7 @@ alpha_handle_trap_shadows (void)
+@@ -9440,7 +9482,7 @@ alpha_handle_trap_shadows (void)
  		      if ((sum.defd.i & shadow.defd.i)
  			  || (sum.defd.fp & shadow.defd.fp))
  			{
@@ -769,7 +767,7 @@ index 5082c1ca0..e398f6c0c 100644
  			  goto close_shadow;
  			}
  
-@@ -9459,6 +9501,13 @@ alpha_handle_trap_shadows (void)
+@@ -9463,6 +9505,13 @@ alpha_handle_trap_shadows (void)
  
  			  goto close_shadow;
  			}
@@ -783,7 +781,7 @@ index 5082c1ca0..e398f6c0c 100644
  		      break;
  
  		    case BARRIER:
-@@ -9469,6 +9518,7 @@ alpha_handle_trap_shadows (void)
+@@ -9473,6 +9522,7 @@ alpha_handle_trap_shadows (void)
  		    case JUMP_INSN:
  		    case CALL_INSN:
  		    case CODE_LABEL:
@@ -871,10 +869,10 @@ index 323f0abee..eea140297 100644
  #define TARGET_OS_CPP_BUILTINS()		\
      do {					\
 diff --git a/gcc/config/arm/arm.h b/gcc/config/arm/arm.h
-index 2e9d678d3..c85057815 100644
+index 8472b7561..4911f858a 100644
 --- a/gcc/config/arm/arm.h
 +++ b/gcc/config/arm/arm.h
-@@ -2451,7 +2451,7 @@ extern const char *arm_target_mode (int argc, const char **argv);
+@@ -2508,7 +2508,7 @@ extern const char *arm_target_mode (int argc, const char **argv);
  
  /* -mcpu=native handling only makes sense with compiler running on
     an ARM chip.  */
@@ -1227,10 +1225,10 @@ index 000000000..23cc611fd
 +    perror ("mprotect of trampoline code");				\
 +}
 diff --git a/gcc/config/i386/i386.cc b/gcc/config/i386/i386.cc
-index a091e9438..c889f5b92 100644
+index b481f0161..1b495ed90 100644
 --- a/gcc/config/i386/i386.cc
 +++ b/gcc/config/i386/i386.cc
-@@ -7025,6 +7025,7 @@ ix86_compute_frame_layout (void)
+@@ -6934,6 +6934,7 @@ ix86_compute_frame_layout (void)
  	}
      }
  
@@ -1238,7 +1236,7 @@ index a091e9438..c889f5b92 100644
    frame->nregs = ix86_nsaved_regs ();
    frame->nsseregs = ix86_nsaved_sseregs ();
  
-@@ -9254,6 +9255,9 @@ ix86_expand_prologue (void)
+@@ -8995,6 +8996,9 @@ ix86_expand_prologue (void)
  	}
      }
  
@@ -1249,10 +1247,10 @@ index a091e9438..c889f5b92 100644
    sse_registers_saved = (frame.nsseregs == 0);
    save_stub_call_needed = (m->call_ms2sysv);
 diff --git a/gcc/config/i386/i386.h b/gcc/config/i386/i386.h
-index f4c89f012..d51fe06d9 100644
+index a06350013..e1917952c 100644
 --- a/gcc/config/i386/i386.h
 +++ b/gcc/config/i386/i386.h
-@@ -2722,6 +2722,8 @@ struct GTY(()) ix86_frame
+@@ -2692,6 +2692,8 @@ struct GTY(()) ix86_frame
    HOST_WIDE_INT stack_realign_offset;
    HOST_WIDE_INT sse_reg_save_offset;
  
@@ -1292,7 +1290,7 @@ index bd63226b3..3a8169ee7 100644
  #define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
  
 diff --git a/gcc/config/mips/mips.h b/gcc/config/mips/mips.h
-index 494f14cc1..c594ca606 100644
+index e224ade2a..da32a93e8 100644
 --- a/gcc/config/mips/mips.h
 +++ b/gcc/config/mips/mips.h
 @@ -1519,7 +1519,9 @@ FP_ASM_SPEC "\
@@ -1305,7 +1303,7 @@ index 494f14cc1..c594ca606 100644
  
  /* This macro defines names of additional specifications to put in the specs
     that can be used in various specifications like CC1_SPEC.  Its definition
-@@ -3473,6 +3475,7 @@ struct GTY(())  machine_function {
+@@ -3467,6 +3469,7 @@ struct GTY(())  machine_function {
  
  /* If we are *not* using multilibs and the default ABI is not ABI_32 we
     need to change these from /lib and /usr/lib.  */
@@ -1313,7 +1311,7 @@ index 494f14cc1..c594ca606 100644
  #ifndef ENABLE_MULTIARCH
  #if MIPS_ABI_DEFAULT == ABI_N32
  #define STANDARD_STARTFILE_PREFIX_1 "/lib32/"
-@@ -3482,7 +3485,7 @@ struct GTY(())  machine_function {
+@@ -3476,7 +3479,7 @@ struct GTY(())  machine_function {
  #define STANDARD_STARTFILE_PREFIX_2 "/usr/lib64/"
  #endif
  #endif
@@ -1645,7 +1643,7 @@ index 6c04f8a71..e3719cec1 100644
  #define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
  
 diff --git a/gcc/config/pa/pa.cc b/gcc/config/pa/pa.cc
-index b63ccf198..839522dfb 100644
+index 9542d3b7d..cce0dff00 100644
 --- a/gcc/config/pa/pa.cc
 +++ b/gcc/config/pa/pa.cc
 @@ -39,6 +39,7 @@ along with GCC; see the file COPYING3.  If not see
@@ -1656,7 +1654,7 @@ index b63ccf198..839522dfb 100644
  #include "alias.h"
  #include "fold-const.h"
  #include "stor-layout.h"
-@@ -4232,6 +4233,9 @@ pa_expand_prologue (void)
+@@ -4233,6 +4234,9 @@ pa_expand_prologue (void)
    if (flag_stack_usage_info)
      current_function_static_stack_size = actual_fsize;
  
@@ -1667,7 +1665,7 @@ index b63ccf198..839522dfb 100644
    tmpreg = gen_rtx_REG (word_mode, 1);
  
 diff --git a/gcc/config/pa/pa.h b/gcc/config/pa/pa.h
-index 6972faae8..d6d47e318 100644
+index be845c836..b5d2d6a68 100644
 --- a/gcc/config/pa/pa.h
 +++ b/gcc/config/pa/pa.h
 @@ -326,6 +326,9 @@ typedef struct GTY(()) machine_function
@@ -1811,7 +1809,7 @@ index 000000000..f9b91697a
 +/* dito */
 +#undef EXTRA_SPEC_FUNCTIONS
 diff --git a/gcc/config/riscv/riscv.opt b/gcc/config/riscv/riscv.opt
-index 6543fd1c4..681efe21c 100644
+index 7515c8ea1..dccd77258 100644
 --- a/gcc/config/riscv/riscv.opt
 +++ b/gcc/config/riscv/riscv.opt
 @@ -154,7 +154,7 @@ Target Mask(EXPLICIT_RELOCS)
@@ -2630,7 +2628,7 @@ index b18918b8b..7c2991cf1 100644
  #undef ENDFILE_SPEC
  #define ENDFILE_SPEC "%{!shared:crtend%O%s} %{shared:crtendS%O%s}"
 diff --git a/gcc/config/sparc/sparc.cc b/gcc/config/sparc/sparc.cc
-index ffd1fb99e..ac8d57e73 100644
+index 2196a0c44..0ae676a95 100644
 --- a/gcc/config/sparc/sparc.cc
 +++ b/gcc/config/sparc/sparc.cc
 @@ -48,6 +48,7 @@ along with GCC; see the file COPYING3.  If not see
@@ -2641,7 +2639,7 @@ index ffd1fb99e..ac8d57e73 100644
  #include "explow.h"
  #include "expr.h"
  #include "debug.h"
-@@ -6059,7 +6060,7 @@ sparc_expand_prologue (void)
+@@ -6061,7 +6062,7 @@ sparc_expand_prologue (void)
        RTX_FRAME_RELATED_P (insn) = 1;
  
        /* Ensure no memory access is done before the frame is established.  */
@@ -2650,7 +2648,7 @@ index ffd1fb99e..ac8d57e73 100644
      }
    else
      {
-@@ -6102,6 +6103,9 @@ sparc_expand_prologue (void)
+@@ -6104,6 +6105,9 @@ sparc_expand_prologue (void)
  					   - sparc_apparent_frame_size,
  					 SORR_SAVE);
  
@@ -2676,10 +2674,10 @@ index 3b625d62b..3662a26c8 100644
  # OpenBSD-specific D support.
  openbsd-d.o: $(srcdir)/config/openbsd-d.cc
 diff --git a/gcc/configure b/gcc/configure
-index 38d8cd919..c6193b663 100755
+index 16965953f..288259bb5 100755
 --- a/gcc/configure
 +++ b/gcc/configure
-@@ -33503,7 +33503,7 @@ $as_echo "#define HAVE_LD_PPC_GNU_ATTR_LONG_DOUBLE 1" >>confdefs.h
+@@ -33065,7 +33065,7 @@ $as_echo "#define HAVE_LD_PPC_GNU_ATTR_LONG_DOUBLE 1" >>confdefs.h
  esac
  
  case "$target:$tm_file" in
@@ -2688,7 +2686,7 @@ index 38d8cd919..c6193b663 100755
    case "$target" in
       *le-*-linux*)
       emul_name="-melf64lppc"
-@@ -33517,6 +33517,10 @@ case "$target:$tm_file" in
+@@ -33079,6 +33079,10 @@ case "$target:$tm_file" in
       *-*-freebsd*)
       emul_name="-melf64ppc_fbsd"
        ;;
@@ -2699,7 +2697,7 @@ index 38d8cd919..c6193b663 100755
    esac
      { $as_echo "$as_me:${as_lineno-$LINENO}: checking linker support for omitting dot symbols" >&5
  $as_echo_n "checking linker support for omitting dot symbols... " >&6; }
-@@ -33884,6 +33888,7 @@ else
+@@ -33446,6 +33450,7 @@ else
  fi
  
          ;;
@@ -2707,7 +2705,7 @@ index 38d8cd919..c6193b663 100755
         *) gcc_cv_libc_provides_ssp=no ;;
      esac
    fi
-@@ -33904,6 +33909,7 @@ if test "${enable_default_ssp+set}" = set; then :
+@@ -33466,6 +33471,7 @@ if test "${enable_default_ssp+set}" = set; then :
  if test x$gcc_cv_libc_provides_ssp = xyes; then
    case "$target" in
      ia64*-*-*) enable_default_ssp=no ;;
@@ -2716,7 +2714,7 @@ index 38d8cd919..c6193b663 100755
    esac
  else
 diff --git a/gcc/defaults.h b/gcc/defaults.h
-index f807ef667..6c48ce459 100644
+index 16f6dc24e..8874ca4b2 100644
 --- a/gcc/defaults.h
 +++ b/gcc/defaults.h
 @@ -1437,6 +1437,10 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
@@ -2745,7 +2743,7 @@ index bda82ec6f..e3cfd2f24 100644
  
  /* Get enum debug_info_type of the specified debug format, for error messages.
 diff --git a/gcc/gcc.cc b/gcc/gcc.cc
-index 8da821e92..fcb413673 100644
+index 4fd87f2c4..3283332ae 100644
 --- a/gcc/gcc.cc
 +++ b/gcc/gcc.cc
 @@ -1052,7 +1052,7 @@ proper position among the other output files.  */
@@ -2785,7 +2783,7 @@ index 646312019..4278fe86b 100644
 +
  #include "gt-lto-lto-common.h"
 diff --git a/gcc/opts.cc b/gcc/opts.cc
-index 10ce2c3de..9809bf0d3 100644
+index ffcbdfef0..b8307d191 100644
 --- a/gcc/opts.cc
 +++ b/gcc/opts.cc
 @@ -201,6 +201,9 @@ bool dwarf_based_debuginfo_p ()
@@ -2798,7 +2796,7 @@ index 10ce2c3de..9809bf0d3 100644
  void
  set_struct_debug_option (struct gcc_options *opts, location_t loc,
  			 const char *spec)
-@@ -661,7 +664,6 @@ static const struct default_options default_options_table[] =
+@@ -655,7 +658,6 @@ static const struct default_options default_options_table[] =
  #ifdef INSN_SCHEDULING
      { OPT_LEVELS_2_PLUS, OPT_fschedule_insns2, NULL, 1 },
  #endif
@@ -2806,7 +2804,7 @@ index 10ce2c3de..9809bf0d3 100644
      { OPT_LEVELS_2_PLUS, OPT_fstore_merging, NULL, 1 },
      { OPT_LEVELS_2_PLUS, OPT_ftree_pre, NULL, 1 },
      { OPT_LEVELS_2_PLUS, OPT_ftree_switch_conversion, NULL, 1 },
-@@ -702,6 +704,7 @@ static const struct default_options default_options_table[] =
+@@ -696,6 +698,7 @@ static const struct default_options default_options_table[] =
      { OPT_LEVELS_3_PLUS, OPT_fpredictive_commoning, NULL, 1 },
      { OPT_LEVELS_3_PLUS, OPT_fsplit_loops, NULL, 1 },
      { OPT_LEVELS_3_PLUS, OPT_fsplit_paths, NULL, 1 },
@@ -2814,7 +2812,7 @@ index 10ce2c3de..9809bf0d3 100644
      { OPT_LEVELS_3_PLUS, OPT_ftree_loop_distribution, NULL, 1 },
      { OPT_LEVELS_3_PLUS, OPT_ftree_partial_pre, NULL, 1 },
      { OPT_LEVELS_3_PLUS, OPT_funswitch_loops, NULL, 1 },
-@@ -1167,6 +1170,8 @@ finish_options (struct gcc_options *opts, struct gcc_options *opts_set,
+@@ -1159,6 +1162,8 @@ finish_options (struct gcc_options *opts, struct gcc_options *opts_set,
  	opts->x_flag_pic = 0;
        if (opts->x_flag_pic && !opts->x_flag_pie)
  	opts->x_flag_shlib = 1;
@@ -2823,7 +2821,7 @@ index 10ce2c3de..9809bf0d3 100644
        opts->x_flag_opts_finished = true;
      }
  
-@@ -2771,6 +2776,11 @@ common_handle_option (struct gcc_options *opts,
+@@ -2754,6 +2759,11 @@ common_handle_option (struct gcc_options *opts,
        opts->x_exit_after_options = true;
        break;
  
@@ -2836,7 +2834,7 @@ index 10ce2c3de..9809bf0d3 100644
        {
  	help_option_arguments.safe_push (arg);
 diff --git a/gcc/targhooks.cc b/gcc/targhooks.cc
-index 947e39aed..7ae048ca1 100644
+index c79458e37..27407fa40 100644
 --- a/gcc/targhooks.cc
 +++ b/gcc/targhooks.cc
 @@ -67,6 +67,7 @@ along with GCC; see the file COPYING3.  If not see
@@ -2990,12 +2988,12 @@ index 947e39aed..7ae048ca1 100644
  
  bool
 diff --git a/gcc/tree-vect-loop.cc b/gcc/tree-vect-loop.cc
-index df45adbe0..69ad71485 100644
+index 5ccd64adb..096831493 100644
 --- a/gcc/tree-vect-loop.cc
 +++ b/gcc/tree-vect-loop.cc
-@@ -60,6 +60,8 @@ along with GCC; see the file COPYING3.  If not see
+@@ -59,6 +59,8 @@ along with GCC; see the file COPYING3.  If not see
+ #include "case-cfn-macros.h"
  #include "langhooks.h"
- #include "opts.h"
  
 +#define vec_step vec_step_
 +
@@ -3003,7 +3001,7 @@ index df45adbe0..69ad71485 100644
  
     This pass tries to vectorize loops.
 diff --git a/libatomic/configure.tgt b/libatomic/configure.tgt
-index 606d24911..00aa4ca4d 100644
+index 6db039d6e..48c70c747 100644
 --- a/libatomic/configure.tgt
 +++ b/libatomic/configure.tgt
 @@ -69,7 +69,7 @@ case "${target_cpu}" in
@@ -3016,7 +3014,7 @@ index 606d24911..00aa4ca4d 100644
  	esac
  	ARCH=sparc
 diff --git a/libbacktrace/configure b/libbacktrace/configure
-index b956afe8c..81edac9c1 100755
+index 85be04300..3871bbf82 100755
 --- a/libbacktrace/configure
 +++ b/libbacktrace/configure
 @@ -6447,7 +6447,7 @@ darwin* | rhapsody*)
@@ -3028,7 +3026,7 @@ index b956afe8c..81edac9c1 100755
    if echo __ELF__ | $CC -E - | $GREP __ELF__ > /dev/null; then
      case $host_cpu in
      i*86 )
-@@ -10239,7 +10239,7 @@ fi
+@@ -9865,7 +9865,7 @@ fi
        ;;
  
      # FreeBSD 3 and greater uses gcc -shared to do shared libraries.
@@ -3038,10 +3036,10 @@ index b956afe8c..81edac9c1 100755
        hardcode_libdir_flag_spec='-R$libdir'
        hardcode_direct=yes
 diff --git a/libffi/include/Makefile.in b/libffi/include/Makefile.in
-index df8b9f64c..725eac7ce 100644
+index 9759f0d91..36cdc5b6f 100644
 --- a/libffi/include/Makefile.in
 +++ b/libffi/include/Makefile.in
-@@ -503,7 +503,7 @@ info: info-am
+@@ -500,7 +500,7 @@ info: info-am
  
  info-am:
  
@@ -3071,10 +3069,10 @@ index f7bead67b..9da00ef34 100644
    if (execsize == 0 || execfd == -1)
      {
 diff --git a/libgcc/config.host b/libgcc/config.host
-index 82ea1772f..f0b539053 100644
+index 6a88ee5a2..d5c36532f 100644
 --- a/libgcc/config.host
 +++ b/libgcc/config.host
-@@ -316,6 +316,8 @@ case ${host} in
+@@ -329,6 +329,8 @@ case ${host} in
    ;;
  *-*-openbsd*)
    tmake_file="$tmake_file t-crtstuff-pic t-libgcc-pic t-eh-dw2-dip"
@@ -3083,7 +3081,7 @@ index 82ea1772f..f0b539053 100644
    case ${target_thread_file} in
      posix)
        tmake_file="$tmake_file t-openbsd-thread"
-@@ -416,6 +418,14 @@ aarch64*-*-netbsd*)
+@@ -429,6 +431,14 @@ aarch64*-*-netbsd*)
  	md_unwind_def_header=aarch64/aarch64-unwind-def.h
  	md_unwind_header=aarch64/aarch64-unwind.h
  	;;
@@ -3098,7 +3096,7 @@ index 82ea1772f..f0b539053 100644
  aarch64*-*-fuchsia*)
  	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
  	tmake_file="${tmake_file} ${cpu_type}/t-lse t-slibgcc-libgcc"
-@@ -542,8 +552,13 @@ arm*-*-netbsdelf*)
+@@ -552,8 +562,13 @@ arm*-*-netbsdelf*)
  	    ;;
  	esac
  	;;
@@ -3114,7 +3112,7 @@ index 82ea1772f..f0b539053 100644
  	tmake_file="${tmake_file} arm/t-elf arm/t-bpabi arm/t-linux-eabi t-slibgcc-libgcc"
  	tm_file="$tm_file arm/bpabi-lib.h"
  	unwind_header=config/arm/unwind-arm.h
-@@ -1059,6 +1074,12 @@ microblaze*-*-rtems*)
+@@ -1063,6 +1078,12 @@ microblaze*-*-rtems*)
  	;;
  mips*-*-netbsd*)			# NetBSD/mips, either endian.
  	;;
@@ -3127,7 +3125,7 @@ index 82ea1772f..f0b539053 100644
  mips*-*-linux*)				# Linux MIPS, either endian.
  	extra_parts="$extra_parts crtfastmath.o"
  	tmake_file="${tmake_file} t-crtfm"
-@@ -1238,6 +1259,9 @@ powerpc*-*-freebsd*)
+@@ -1242,6 +1263,9 @@ powerpc*-*-freebsd*)
  powerpc-*-netbsd*)
  	tmake_file="$tmake_file rs6000/t-netbsd rs6000/t-crtstuff"
  	;;
@@ -3137,7 +3135,7 @@ index 82ea1772f..f0b539053 100644
  powerpc-*-eabisimaltivec*)
  	tmake_file="${tmake_file} rs6000/t-ppccomm rs6000/t-crtstuff t-crtstuff-pic t-fdpbit"
  	extra_parts="$extra_parts crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o ecrti.o ecrtn.o ncrti.o ncrtn.o"
-@@ -1354,6 +1378,9 @@ riscv*-*-freebsd*)
+@@ -1358,6 +1382,9 @@ riscv*-*-freebsd*)
  	tmake_file="${tmake_file} riscv/t-crtstuff riscv/t-softfp${host_address} t-softfp riscv/t-elf riscv/t-elf${host_address} t-slibgcc-libgcc"
  	extra_parts="$extra_parts crtbegin.o crtend.o crti.o crtn.o crtendS.o crtbeginT.o"
  	;;
@@ -3179,10 +3177,10 @@ index 000000000..764abc6de
 +	$(srcdir)/config/rs6000/crtsavevr.S \
 +	$(srcdir)/config/rs6000/crtrestvr.S
 diff --git a/libgcc/libgcc2.c b/libgcc/libgcc2.c
-index df99c78eb..924786cde 100644
+index 92cb79dc8..c5b5979e9 100644
 --- a/libgcc/libgcc2.c
 +++ b/libgcc/libgcc2.c
-@@ -3046,6 +3046,7 @@ mprotect (char *addr, int len, int prot)
+@@ -3061,6 +3061,7 @@ mprotect (char *addr, int len, int prot)
  #endif /* WINNT && ! __CYGWIN__ */
  
  #ifdef TRANSFER_FROM_TRAMPOLINE
@@ -3281,5 +3279,5 @@ index 4237a4860..d22bd8ba3 100644
    };
  
 -- 
-2.50.1
+2.51.1
 
