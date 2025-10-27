@@ -334,7 +334,7 @@ if ! [ -f "${lld_tarball}" ]; then
 	if [ "${target}" = 'native' ]; then
 		target='x86_64-unknown-linux-gnu'
 	fi
-	
+	echo $target
 	curl \
 		--url "https://github.com/AmanoTeam/LLVM-LLD-Builds/releases/latest/download/${target}.tar.xz" \
 		--retry '30' \
