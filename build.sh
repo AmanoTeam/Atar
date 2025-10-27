@@ -519,17 +519,17 @@ cp "${workdir}/submodules/obggcc/tools/ln.sh" '/tmp/ln'
 
 export PATH="/tmp:${PATH}"
 
-if [[ "${CROSS_COMPILE_TRIPLET}" == 'arm'*'-android'* ]] || [[ "${CROSS_COMPILE_TRIPLET}" == 'i686-'*'-android'* ]] || [[ "${CROSS_COMPILE_TRIPLET}" == 'mipsel-'*'-android'* ]]; then
+if [[ "${CROSS_COMPILE_TRIPLET}" = 'arm'*'-android'* ]] || [[ "${CROSS_COMPILE_TRIPLET}" = 'i686-'*'-android'* ]] || [[ "${CROSS_COMPILE_TRIPLET}" = 'mipsel-'*'-android'* ]]; then
 	export \
 		ac_cv_func_fseeko='no' \
 		ac_cv_func_ftello='no'
 fi
 
-if [[ "${CROSS_COMPILE_TRIPLET}" == 'armv5'*'-android'* ]]; then
+if [[ "${CROSS_COMPILE_TRIPLET}" = 'armv5'*'-android'* ]]; then
 	export PINO_ARM_MODE='true'
 fi
 
-if [[ "${CROSS_COMPILE_TRIPLET}" == *'-haiku' ]]; then
+if [[ "${CROSS_COMPILE_TRIPLET}" = *'-haiku' ]]; then
 	export ac_cv_c_bigendian='no'
 fi
 
@@ -689,6 +689,7 @@ for triplet in "${targets[@]}"; do
 		--with-specs="${specs}" \
 		--without-headers \
 		--with-pic \
+		--disable-fixincludes \
 		--disable-gnu-indirect-function \
 		--disable-c++-tools \
 		--disable-libsanitizer \
