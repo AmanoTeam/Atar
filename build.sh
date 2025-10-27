@@ -48,18 +48,18 @@ declare -r linkflags='-Xlinker -s'
 declare -r gcc_wrapper='/tmp/gcc-wrapper'
 
 declare -ra targets=(
-	# 'hppa-unknown-openbsd'
-	# 'x86_64-unknown-openbsd'
-	# 'mips64-unknown-openbsd'
-	# 'mips64el-unknown-openbsd'
-	# 'riscv64-unknown-openbsd'
+	'hppa-unknown-openbsd'
+	'x86_64-unknown-openbsd'
+	'mips64-unknown-openbsd'
+	'mips64el-unknown-openbsd'
+	'riscv64-unknown-openbsd'
 	'aarch64-unknown-openbsd'
-	# 'arm-unknown-openbsd'
-	# 'i386-unknown-openbsd'
-	# 'alpha-unknown-openbsd'
-	# 'powerpc-unknown-openbsd'
-	# 'powerpc64-unknown-openbsd'
-	# 'sparc64-unknown-openbsd'
+	'arm-unknown-openbsd'
+	'i386-unknown-openbsd'
+	'alpha-unknown-openbsd'
+	'powerpc-unknown-openbsd'
+	'powerpc64-unknown-openbsd'
+	'sparc64-unknown-openbsd'
 )
 
 declare -ra libraries=(
@@ -389,6 +389,12 @@ if ! [ -f "${zstd_tarball}" ]; then
 		--file="${zstd_tarball}"
 fi
 
+declare disable_assembly='--disable-assembly'
+
+if [[ "${CROSS_COMPILE_TRIPLET}" != 'mips64el-'* ]]; then
+	disable_assembly=''
+fi
+
 [ -d "${gmp_directory}/build" ] || mkdir "${gmp_directory}/build"
 
 cd "${gmp_directory}/build"
@@ -398,6 +404,7 @@ cd "${gmp_directory}/build"
 	--prefix="${toolchain_directory}" \
 	--enable-shared \
 	--disable-static \
+	${disable_assembly} \
 	CFLAGS="${ccflags}" \
 	CXXFLAGS="${ccflags}" \
 	LDFLAGS="${linkflags}"
