@@ -296,4 +296,23 @@ jobs:
         path: |
           /tmp/${{ env.CROSS_COMPILE_TRIPLET }}.tar.xz
           /tmp/${{ env.CROSS_COMPILE_TRIPLET }}.tar.xz.sha256
-   
+
+  release:
+    needs: cross-build
+    runs-on: ubuntu-latest
+    name: Create release
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@main
+      - name: Create release
+        uses: softprops/action-gh-release@master
+        with:
+          tag_name: gcc-16
+          name: GCC 16.0.0
+          files: ./*/*-unknown-*.tar.xz*
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          body: "* Update to GCC 16.0.0"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
