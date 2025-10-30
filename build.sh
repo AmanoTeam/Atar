@@ -48,18 +48,18 @@ declare -r linkflags='-Xlinker -s'
 declare -r gcc_wrapper='/tmp/gcc-wrapper'
 
 declare -ra targets=(
-	'hppa-unknown-openbsd'
+	# 'hppa-unknown-openbsd'
 	'x86_64-unknown-openbsd'
-	'mips64-unknown-openbsd'
-	'mips64el-unknown-openbsd'
-	'riscv64-unknown-openbsd'
-	'aarch64-unknown-openbsd'
-	'arm-unknown-openbsd'
-	'i386-unknown-openbsd'
-	'alpha-unknown-openbsd'
-	'powerpc-unknown-openbsd'
-	'powerpc64-unknown-openbsd'
-	'sparc64-unknown-openbsd'
+	# 'mips64-unknown-openbsd'
+	# 'mips64el-unknown-openbsd'
+	# 'riscv64-unknown-openbsd'
+	# 'aarch64-unknown-openbsd'
+	# 'arm-unknown-openbsd'
+	# 'i386-unknown-openbsd'
+	# 'alpha-unknown-openbsd'
+	# 'powerpc-unknown-openbsd'
+	# 'powerpc64-unknown-openbsd'
+	# 'sparc64-unknown-openbsd'
 )
 
 declare -ra libraries=(
@@ -390,11 +390,17 @@ if ! [ -f "${zstd_tarball}" ]; then
 		--extract \
 		--file="${zstd_tarball}"
 fi
+LDFLAGS='-Wl,-soname=libgmp.so'
 
+declare gmp_ldflags=''
 declare disable_assembly='--disable-assembly'
 
 if [[ "${CROSS_COMPILE_TRIPLET}" != 'mips64el-'* ]]; then
 	disable_assembly=''
+fi
+
+if [[ "${CROSS_COMPILE_TRIPLET}" = *'-openbsd'* ]]; then
+	gmp_ldflags+=' -Xlinker -soname=libgmp.so'
 fi
 
 [ -d "${gmp_directory}/build" ] || mkdir "${gmp_directory}/build"
@@ -409,7 +415,7 @@ cd "${gmp_directory}/build"
 	${disable_assembly} \
 	CFLAGS="${ccflags}" \
 	CXXFLAGS="${ccflags}" \
-	LDFLAGS="${linkflags}"
+	LDFLAGS="${linkflags} ${gmp_ldflags}"
 
 make all --silent --jobs
 make install
@@ -553,7 +559,7 @@ for triplet in "${targets[@]}"; do
 	declare extra_binutils_flags=''
 	declare require_lld='0'
 	
-	declare specs='%{!Qy: -Qn} %{!fno-pic: %{!fno-PIC: %{!fpic: %{!fPIC: -fpic}}}} %{!fno-plt: %{!fplt: -fno-plt}}'
+	declare specs='%{!Qy: -Qn} %{!fno-pic: %{!fno-PIC: %{!fpic: %{!fPIC: -fpic}}}}'
 	
 	if [ "${triplet}" = 'x86_64-unknown-openbsd' ] || [ "${triplet}" = 'i386-unknown-openbsd' ]; then
 		specs+=' %{!fno-plt: %{!fplt: -fno-plt}}'
